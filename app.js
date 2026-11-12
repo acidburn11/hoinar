@@ -107,7 +107,7 @@ const store = (k, v) => {
 };
 
 const settings = Object.assign(
-  { api: DEFAULT_API, token: '', peron: '', lang: (navigator.language || '').toLowerCase().startsWith('ro') ? 'ro' : 'en' },
+  { api: DEFAULT_API, token: '', peron: 'https://acidburn11.github.io/peron/', lang: (navigator.language || '').toLowerCase().startsWith('ro') ? 'ro' : 'en' },
   load(K_SETTINGS, {})
 );
 const trips = load(K_TRIPS, {});
@@ -416,8 +416,9 @@ function howToUrl(from, to, toName) {
   if (settings.peron) {
     const u = new URL(settings.peron, location.href);
     u.searchParams.set('from', `${from.lat},${from.lon}`);
+    u.searchParams.set('fromName', from.name || '');
     u.searchParams.set('to', `${to.lat},${to.lon}`);
-    u.searchParams.set('toName', toName);
+    u.searchParams.set('name', toName);
     return u.href;
   }
   return `https://maps.apple.com/?saddr=${from.lat},${from.lon}&daddr=${to.lat},${to.lon}&dirflg=r`;

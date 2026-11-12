@@ -731,14 +731,23 @@ function renderHome() {
         ? `<div class="trip-grid">${list
             .map((tr) => {
               const img = heroImage(tr);
-              return `<a class="trip-card" href="#/trip/${tr.id}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span class="tc-fill"></span>'}<span class="tc-text"><strong>${esc(
+              return `<div class="trip-wrap"><button class="round del" type="button" data-del="${tr.id}" aria-label="${esc(t('deleteTrip'))}">${icon('trash')}</button><a class="trip-card" href="#/trip/${tr.id}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span class="tc-fill"></span>'}<span class="tc-text"><strong>${esc(
                 tr.plan.city
-              )}</strong><small>${fmtRange(tr.input.start, tr.input.end)}, ${daysLabel(tr.plan.days.length)}</small></span></a>`;
+              )}</strong><small>${fmtRange(tr.input.start, tr.input.end)}, ${daysLabel(tr.plan.days.length)}</small></span></a></div>`;
             })
             .join('')}</div>`
         : `<div class="empty">${icon('globe')}<p><strong>${t('emptyTitle')}</strong></p><p>${t('emptyText')}</p></div>`
     }
     <div class="cta"><a class="btn primary pill" href="#/new">${icon('plus')}${t('newTrip')}</a></div>`;
+  app.querySelectorAll('[data-del]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const tr = trips[b.dataset.del];
+      if (!tr || !confirm(t('confirmDelete', { city: tr.plan.city }))) return;
+      delete trips[tr.id];
+      saveTrips();
+      renderHome();
+    })
+  );
   list.filter((tr) => !heroImage(tr)).forEach((tr) => pageImages(tr.plan.attractions.slice(0, 6)).then((c) => c && (saveTrips(), location.hash.length < 3 && renderHome())));
 }
 
@@ -1070,15 +1079,15 @@ function openSheet(trip, id, date) {
   showSheet(
     `<h2 id="sheet-title" class="sheet-title">${esc(a.name)}</h2>
     <p class="chips-row"><span class="tag">${t('c_' + a.category)}</span><span class="tag">${icon('clock')}${a.durationMin} min</span></p>
+    <div class="actions top">
+      <a class="btn primary" href="${nav}" target="_blank" rel="noopener">${icon('nav')}${t('navigate')}</a>
+      ${a.site ? `<a class="btn" href="${esc(a.site)}" target="_blank" rel="noopener">${icon('globe')}${t('site')}</a>` : ''}
+      ${a.wikipedia ? `<a class="btn" href="${esc(a.wikipedia)}" target="_blank" rel="noopener">${icon('book')}${t('wikipedia')}</a>` : ''}
+    </div>
     ${a.desc ? `<p class="desc">${esc(a.desc)}</p>` : ''}
     <div class="facts">
       <div class="fact">${icon('clock')}<span><small>${t('hours')}</small>${esc(hoursText(a.hours))}${closed ? `<em class="warn">${t('closed')}</em>` : ''}</span></div>
       <div class="fact">${icon('ticket')}<span><small>${t('entry')}</small>${esc(entryText(a))}</span></div>
-    </div>
-    <div class="actions">
-      <a class="btn primary" href="${nav}" target="_blank" rel="noopener">${icon('nav')}${t('navigate')}</a>
-      ${a.site ? `<a class="btn" href="${esc(a.site)}" target="_blank" rel="noopener">${icon('globe')}${t('site')}</a>` : ''}
-      ${a.wikipedia ? `<a class="btn" href="${esc(a.wikipedia)}" target="_blank" rel="noopener">${icon('book')}${t('wikipedia')}</a>` : ''}
     </div>`,
     a.image ? a.image.replace(/\/\d+px-/, '/960px-') : null
   );

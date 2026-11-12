@@ -310,7 +310,7 @@ button.stop-body { cursor: pointer; }
   background: var(--surface-2); color: var(--ink); cursor: pointer;
 }
 .with-img .sheet-close { background: rgba(20, 20, 20, .45); color: #fff; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-.sheet-hero { height: 240px; background: var(--surface-2); }
+.sheet-hero { height: 190px; background: var(--surface-2); }
 .sheet-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .sheet-content { padding: 0 20px; }
 .sheet-top { font-size: 22px; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; margin: 0; padding: 30px 48px 4px 0; }
@@ -352,3 +352,7 @@ button.stop-body { cursor: pointer; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 input[type=date] { padding: 10px; font-size: 16px; }
+.actions.top { margin: 16px 0 4px; }
+.trip-wrap { position: relative; }
+.round.del { position: absolute; top: 12px; right: 12px; z-index: 2; width: 38px; height: 38px; }
+.round.del .ic { width: 18px; height: 18px; }

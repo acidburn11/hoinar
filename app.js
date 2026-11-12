@@ -33,6 +33,16 @@ const STR = {
     c_museum: 'Muzeu', c_castle: 'Castel', c_palace: 'Palat', c_gallery: 'Galerie', c_zoo: 'Gradina zoologica',
     c_aquarium: 'Acvariu', c_theme_park: 'Parc de distractii', c_viewpoint: 'Punct de belvedere', c_attraction: 'Atractie',
     c_historic: 'Obiectiv istoric', c_park: 'Parc', c_church: 'Biserica', c_monument: 'Monument',
+    theme: 'Tema', themeAuto: 'Automata', themeLight: 'Luminoasa', themeDark: 'Intunecata',
+    backup: 'Backup', exportBtn: 'Exporta calatoriile', importBtn: 'Importa din fisier', backupHint: 'Fisierul contine calatoriile si setarile, fara cheia de acces.',
+    imported: 'Am importat {n} calatorii.', importErr: 'Fisierul nu e un backup Hoinar valid.',
+    steps: '~{n} pasi, {km} pe jos', stepsReal: '{n} pasi, {km} pe jos',
+    stepsSaved: 'Am salvat {n} pasi pentru {d}.', stepsNoTrip: 'Nu am gasit nicio calatorie activa pentru ziua asta.',
+    countryInfo: 'Info utile: {country}', countryHint: 'Urgente, bani, priza, fraze', emergency: 'Urgente', call: 'Suna la {n}',
+    embassy: 'Ambasada Romaniei', embassyHint: 'Vezi pe harta', money: 'Bani', rate: '1 {cur} = {ron} lei', convert: 'Convertor',
+    localTime: 'Ora locala', sameTime: 'Aceeasi ora ca in Romania', timeDiff: '{h} h fata de Romania', plugs: 'Priza',
+    plugOk: 'Tip {p}. Incarcatoarele din Romania merg fara adaptor.', plugNeed: 'Tip {p}. Ai nevoie de adaptor.',
+    langLabel: 'Limba', tipping: 'Bacsis', phrases: 'Fraze utile', goodToKnow: 'Bun de stiut', lei: 'lei',
     moreActions: 'Mai multe', schedule: 'Programul zilei', nearStayHint: 'Celebre si cele mai apreciate', offlineHint: 'Traseul si harta fara internet', offlineSaved: 'Salvata pe telefon',
     calHint: 'Fiecare vizita, cu ora si locul', shareHint: 'Un link pe care il poate deschide oricine', deleteTrip: 'Sterge calatoria',
     edit: 'Editeaza', done: 'Gata', remove: 'Scoate', moveTo: 'Muta in...', addHere: 'Adauga in ziua asta', regen: 'Regenereaza ziua',
@@ -75,6 +85,16 @@ const STR = {
     c_museum: 'Museum', c_castle: 'Castle', c_palace: 'Palace', c_gallery: 'Gallery', c_zoo: 'Zoo',
     c_aquarium: 'Aquarium', c_theme_park: 'Theme park', c_viewpoint: 'Viewpoint', c_attraction: 'Attraction',
     c_historic: 'Historic site', c_park: 'Park', c_church: 'Church', c_monument: 'Monument',
+    theme: 'Theme', themeAuto: 'Automatic', themeLight: 'Light', themeDark: 'Dark',
+    backup: 'Backup', exportBtn: 'Export trips', importBtn: 'Import from file', backupHint: 'The file contains your trips and settings, without the access key.',
+    imported: 'Imported {n} trips.', importErr: 'This file isn\u2019t a valid Hoinar backup.',
+    steps: '~{n} steps, {km} on foot', stepsReal: '{n} steps, {km} on foot',
+    stepsSaved: 'Saved {n} steps for {d}.', stepsNoTrip: 'No active trip found for that day.',
+    countryInfo: 'Useful info: {country}', countryHint: 'Emergency, money, plugs, phrases', emergency: 'Emergency', call: 'Call {n}',
+    embassy: 'Embassy of Romania', embassyHint: 'See on map', money: 'Money', rate: '1 {cur} = {ron} RON', convert: 'Converter',
+    localTime: 'Local time', sameTime: 'Same time as Romania', timeDiff: '{h} h vs Romania', plugs: 'Plugs',
+    plugOk: 'Type {p}. Romanian chargers work without an adapter.', plugNeed: 'Type {p}. You need an adapter.',
+    langLabel: 'Language', tipping: 'Tipping', phrases: 'Useful phrases', goodToKnow: 'Good to know', lei: 'RON',
     moreActions: 'More', schedule: 'Schedule', nearStayHint: 'Famous and top rated', offlineHint: 'Your route and map without internet', offlineSaved: 'Saved on this phone',
     calHint: 'Each visit with time and place', shareHint: 'A link anyone can open', deleteTrip: 'Delete trip',
     edit: 'Edit', done: 'Done', remove: 'Remove', moveTo: 'Move to...', addHere: 'Add to this day', regen: 'Rebuild this day',
@@ -107,7 +127,7 @@ const store = (k, v) => {
 };
 
 const settings = Object.assign(
-  { api: DEFAULT_API, token: '', peron: 'https://acidburn11.github.io/peron/', lang: (navigator.language || '').toLowerCase().startsWith('ro') ? 'ro' : 'en' },
+  { api: DEFAULT_API, token: '', theme: 'auto', peron: 'https://acidburn11.github.io/peron/', lang: (navigator.language || '').toLowerCase().startsWith('ro') ? 'ro' : 'en' },
   load(K_SETTINGS, {})
 );
 const trips = load(K_TRIPS, {});
@@ -595,6 +615,7 @@ function route() {
   }
   document.body.classList.remove('hero-page', 'scrolled');
   const h = location.hash.slice(1) || '/';
+  if (h.startsWith('steps=')) return importSteps(h);
   if (h.startsWith('share=')) return importShared(h.slice(6));
   if (h.startsWith('/trip/')) {
     const trip = trips[h.slice(6)];
@@ -653,6 +674,12 @@ const ICON = {
   fog: '<path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24"/><path d="M16 17H7"/><path d="M17 21H9"/>',
   storm: '<path d="M6 16.33A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.97"/><path d="m13 12-3 5h4l-3 5"/>',
   sunset: '<path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/>',
+  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
+  money: '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
   drop: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
 };
 const icon = (name, cls = '') =>
@@ -708,6 +735,171 @@ async function pageImages(items, size = 640) {
   return changed;
 }
 const heroImage = (trip) => trip.plan.attractions.find((a) => a.image)?.image || null;
+
+function dayWalkKm(trip, day) {
+  let km = 0;
+  let any = false;
+  for (const it of day.items) {
+    if (it.type !== 'visit') continue;
+    const a = info(trip, it.attractionId);
+    any = true;
+    km += it.travelMode === 'walk' ? (it.travelMin * 4.5) / 60 : 0.6;
+    if (a) km += a.durationMin * (a.indoor ? 0.012 : 0.02);
+  }
+  return any ? km + 1 : 0;
+}
+
+function applyTheme() {
+  const th = settings.theme;
+  if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th;
+  else delete document.documentElement.dataset.theme;
+}
+
+const tzOffset = (tz) => {
+  const d = new Date();
+  try {
+    return Math.round((new Date(d.toLocaleString('en-US', { timeZone: tz })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }))) / 60000);
+  } catch {
+    return null;
+  }
+};
+
+function curName(c) {
+  try {
+    const n = new Intl.DisplayNames([locale()], { type: 'currency' }).of(c.currency);
+    if (n && n !== c.currency) return noDia(n);
+  } catch {}
+  return c.currencyName || c.currency;
+}
+
+async function openCountry(trip) {
+  const p = trip.plan;
+  const head = `<h2 id="sheet-title" class="sheet-top">${esc(t('countryInfo', { country: p.country }))}</h2>`;
+  const load = () => api('/country', { code: p.geo?.countryCode, name: p.country, lang: trip.input.lang }, 40000);
+  let c = trip.country;
+  if (!c) {
+    showSheet(`${head}<p class="pending"><span class="spinner"></span>${t('preparing')}</p>`);
+    try {
+      c = trip.country = { ...(await load()), fetched: Date.now() };
+      saveTrips();
+    } catch (e) {
+      return showSheet(`${head}<p class="error">${esc(e.message)}</p>`);
+    }
+    if (sheet.hidden) return;
+  } else if (Date.now() - (c.fetched || 0) > 12 * 3600e3) {
+    load()
+      .then((n) => {
+        trip.country = { ...n, fetched: Date.now() };
+        saveTrips();
+      })
+      .catch(() => {});
+  }
+
+  const nf = new Intl.NumberFormat(locale(), { maximumFractionDigits: 2 });
+  const tel = c.emergency.split(/[\s/]+/)[0];
+  const facts = [
+    `<a class="fact link" href="tel:${esc(tel)}">${icon('phone')}<span><small>${t('emergency')}</small><strong>${esc(c.emergency)}</strong></span>${icon('chev', 'go')}</a>`,
+    `<a class="fact link" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${settings.lang === 'ro' ? 'Ambasada Romaniei' : 'Embassy of Romania'} ${c.capital || p.country}`)}" target="_blank" rel="noopener">${icon(
+      'landmark'
+    )}<span><small>${t('embassy')}</small>${t('embassyHint')}</span>${icon('chev', 'go')}</a>`,
+  ];
+  if (c.currency) {
+    facts.push(
+      `<div class="fact">${icon('money')}<span><small>${t('money')}</small>${esc(curName(c))}${c.currencySymbol ? ` (${esc(c.currencySymbol)})` : ''}${
+        c.rate && c.currency !== 'RON' ? `<br>${t('rate', { cur: c.currency, ron: nf.format(c.rate) })}` : ''
+      }${
+        c.rate && c.currency !== 'RON'
+          ? `<span class="conv"><input id="conv" type="number" inputmode="decimal" value="100" aria-label="${t('convert')}"> ${esc(c.currency)} = <strong id="conv-out">${nf.format(100 * c.rate)}</strong> ${t('lei')}</span>`
+          : ''
+      }</span></div>`
+    );
+  }
+  const off = p.geo?.timezone ? tzOffset(p.geo.timezone) : null;
+  const ro = tzOffset('Europe/Bucharest');
+  if (off != null && ro != null) {
+    const h = (off - ro) / 60;
+    facts.push(`<div class="fact">${icon('clock')}<span><small>${t('localTime')}</small>${h === 0 ? t('sameTime') : t('timeDiff', { h: (h > 0 ? '+' : '\u2212') + nf.format(Math.abs(h)) })}</span></div>`);
+  }
+  if (c.plugs) {
+    const ok = /\b(C|E|F|H|J|K|L|N)\b/.test(c.plugs);
+    facts.push(`<div class="fact">${icon('plug')}<span><small>${t('plugs')}</small>${t(ok ? 'plugOk' : 'plugNeed', { p: esc(c.plugs) })}</span></div>`);
+  }
+  if (c.language) facts.push(`<div class="fact">${icon('chat')}<span><small>${t('langLabel')}</small>${esc(c.language)}</span></div>`);
+  if (c.tipping) facts.push(`<div class="fact">${icon('money')}<span><small>${t('tipping')}</small>${esc(c.tipping)}</span></div>`);
+
+  const phrases = c.phrases?.length
+    ? `<h3 class="rhead">${t('phrases')}</h3><ul class="phrases">${c.phrases
+        .map((x) => `<li><span class="ph-mean">${esc(x.meaning)}</span><strong>${esc(x.local)}</strong>${x.say ? `<small>${esc(x.say)}</small>` : ''}</li>`)
+        .join('')}</ul>`
+    : '';
+  const notes = c.notes?.length ? `<h3 class="rhead">${t('goodToKnow')}</h3><ul class="notes">${c.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+  showSheet(`${head}<div class="facts">${facts.join('')}</div>${phrases}${notes}`);
+  document.getElementById('conv')?.addEventListener('input', (e) => {
+    const v = parseFloat(String(e.target.value).replace(',', '.'));
+    document.getElementById('conv-out').textContent = Number.isFinite(v) ? nf.format(v * c.rate) : '\u2013';
+  });
+}
+
+function importSteps(h) {
+  const q = new URLSearchParams(h.replace('steps=', 'n='));
+  const n = parseInt(q.get('n'), 10);
+  const date = q.get('date');
+  if (!Number.isFinite(n) || !date) {
+    history.replaceState(null, '', `${location.pathname}#/`);
+    return route();
+  }
+  const trip = Object.values(trips).find((tr) => tr.plan.days.some((d) => d.date === date));
+  if (!trip) {
+    history.replaceState(null, '', `${location.pathname}#/`);
+    route();
+    return toast(t('stepsNoTrip'));
+  }
+  trip.steps ||= {};
+  trip.steps[date] = n;
+  saveTrips();
+  state.day = trip.plan.days.findIndex((d) => d.date === date);
+  history.replaceState(null, '', `${location.pathname}#/trip/${trip.id}`);
+  route();
+  toast(t('stepsSaved', { n: new Intl.NumberFormat(locale()).format(n), d: fmt(date, { day: 'numeric', month: 'short' }) }));
+}
+
+function exportBackup() {
+  const data = { app: 'hoinar', version: 1, exported: new Date().toISOString(), settings: { lang: settings.lang, peron: settings.peron, theme: settings.theme }, trips };
+  const name = `hoinar-backup-${today()}.json`;
+  const file = new File([JSON.stringify(data)], name, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) return navigator.share({ files: [file], title: name }).catch(() => {});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+async function importBackup(file) {
+  try {
+    const d = JSON.parse(await file.text());
+    if (d.app !== 'hoinar' || !d.trips || typeof d.trips !== 'object') throw new Error();
+    let n = 0;
+    for (const [id, tr] of Object.entries(d.trips)) {
+      if (tr?.plan?.days && tr.input) {
+        trips[id] = tr;
+        n++;
+      }
+    }
+    if (d.settings) {
+      for (const k of ['lang', 'peron', 'theme']) if (d.settings[k] != null) settings[k] = d.settings[k];
+      saveSettings();
+      applyTheme();
+    }
+    saveTrips();
+    renderSettings();
+    toast(t('imported', { n }));
+  } catch {
+    toast(t('importErr'));
+  }
+}
 
 function renderHome() {
   const list = Object.values(trips).sort((a, b) => b.input.start.localeCompare(a.input.start));
@@ -899,13 +1091,22 @@ function renderTrip(trip, keepScroll = false) {
       .join('')}</nav>
     <section class="day">
       <h2 class="day-title">${esc(title)}</h2>
-      ${
-        w
-          ? `<p class="wxline"><span>${wxIcon(w.code)}${Math.round(w.tmin)}\u2013${Math.round(w.tmax)}\u00B0C</span><span>${icon('drop')}${w.rainProb ?? 0}%</span>${
-              w.sunset ? `<span>${icon('sunset')}${w.sunset}</span>` : ''
-            }</p>`
-          : ''
-      }
+      ${(() => {
+        const parts = [];
+        if (w) {
+          parts.push(`<span>${wxIcon(w.code)}${Math.round(w.tmin)}\u2013${Math.round(w.tmax)}\u00B0C</span>`, `<span>${icon('drop')}${w.rainProb ?? 0}%</span>`);
+          if (w.sunset) parts.push(`<span>${icon('sunset')}${w.sunset}</span>`);
+        }
+        const real = trip.steps?.[day.date];
+        if (real != null) {
+          parts.push(`<span>${icon('walk')}${t('stepsReal', { n: new Intl.NumberFormat(locale()).format(real), km: fmtKm(dayWalkKm(trip, day)) })}</span>`);
+        } else if (visits.length) {
+          const km = dayWalkKm(trip, day);
+          const steps = Math.round((km * 1350) / 100) * 100;
+          parts.push(`<span>${icon('walk')}${t('steps', { n: new Intl.NumberFormat(locale()).format(steps), km: fmtKm(km) })}</span>`);
+        }
+        return parts.length ? `<p class="wxline">${parts.join('')}</p>` : '';
+      })()}
       ${
         nextA
           ? `<div class="now"><span class="now-img">${pic(nextA.image, nextA.category)}</span><div class="now-body"><small>${t('nextAt', { t: next.time })}</small><strong>${esc(nextA.name)}</strong><small id="now-dist"></small><div class="now-actions"><a class="btn primary small" href="https://maps.apple.com/?daddr=${nextA.lat},${nextA.lon}&dirflg=w" target="_blank" rel="noopener">${icon('nav')}${t('navigate')}</a><button class="btn small" id="locate" type="button" data-target="${nextA.id}">${icon('locate')}${t('locate')}</button></div></div></div>`
@@ -921,6 +1122,9 @@ function renderTrip(trip, keepScroll = false) {
       <button class="tile" type="button" data-near="${p.stay.lat},${p.stay.lon}" data-place="${esc(t('stayLabel').toLowerCase())}"><span class="tile-ic">${icon('food')}</span><span><strong>${t(
         'nearStay'
       )}</strong><small>${t('nearStayHint')}</small></span>${icon('chev', 'go')}</button>
+      <button class="tile" type="button" id="country"><span class="tile-ic">${icon('info')}</span><span><strong>${esc(t('countryInfo', { country: p.country }))}</strong><small>${t(
+        'countryHint'
+      )}</small></span>${icon('chev', 'go')}</button>
     </section>
     ${
       extras.length
@@ -954,6 +1158,7 @@ function renderTrip(trip, keepScroll = false) {
     renderTrip(trip, true);
   });
   document.getElementById('more').addEventListener('click', () => moreMenu(trip));
+  document.getElementById('country').addEventListener('click', () => openCountry(trip));
   app.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => removeFromDay(trip, state.day, b.dataset.remove)));
   app.querySelectorAll('[data-move]').forEach((sel) =>
     sel.addEventListener('change', () => sel.value !== '' && moveToDay(trip, state.day, +sel.value, sel.dataset.move))
@@ -1179,6 +1384,9 @@ function renderSettings() {
     <form id="s" novalidate>
       <div class="card form-card">
         <div class="field"><label for="token">${t('token')}</label><input id="token" type="password" autocomplete="off" value="${esc(settings.token)}"></div>
+        <div class="field"><label for="theme">${t('theme')}</label><select id="theme">${['auto', 'light', 'dark']
+          .map((v) => `<option value="${v}"${(settings.theme || 'auto') === v ? ' selected' : ''}>${t('theme' + v[0].toUpperCase() + v.slice(1))}</option>`)
+          .join('')}</select></div>
         <div class="field last"><label for="lang">${t('language')}</label><select id="lang"><option value="ro"${settings.lang === 'ro' ? ' selected' : ''}>Romana</option><option value="en"${
           settings.lang === 'en' ? ' selected' : ''
         }>English</option></select></div>
@@ -1187,14 +1395,32 @@ function renderSettings() {
         <div class="field"><label for="peron">${t('peron')}</label><input id="peron" type="url" autocomplete="off" placeholder="https://acidburn11.github.io/peron/" value="${esc(settings.peron)}"><p class="hint">${t('peronHint')}</p></div>
         <div class="field last"><label for="api">${t('api')}</label><input id="api" type="url" autocomplete="off" value="${esc(settings.api)}"></div>
       </div>
+      <div class="card form-card backup">
+        <p class="label">${t('backup')}</p>
+        <div class="actions">
+          <button class="btn" id="exp" type="button">${icon('download')}${t('exportBtn')}</button>
+          <label class="btn" for="imp">${icon('upload')}${t('importBtn')}</label>
+          <input id="imp" type="file" accept="application/json,.json" hidden>
+        </div>
+        <p class="hint">${t('backupHint')}</p>
+      </div>
       <p class="ok" id="msg" role="status"></p>
       <div class="cta"><button class="btn primary pill" type="submit">${t('save')}</button></div>
     </form>`;
+  document.getElementById('exp').addEventListener('click', exportBackup);
+  document.getElementById('imp').addEventListener('change', (e) => e.target.files[0] && importBackup(e.target.files[0]));
+  document.getElementById('theme').addEventListener('change', (e) => {
+    settings.theme = e.target.value;
+    saveSettings();
+    applyTheme();
+  });
   const f = document.getElementById('s');
   f.addEventListener('submit', (e) => {
     e.preventDefault();
     settings.token = f.token.value.trim();
     settings.lang = document.getElementById('lang').value;
+    settings.theme = document.getElementById('theme').value;
+    applyTheme();
     settings.api = f.api.value.trim() || DEFAULT_API;
     settings.peron = document.getElementById('peron').value.trim();
     saveSettings();
@@ -1211,6 +1437,7 @@ for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev
 window.addEventListener('hashchange', route);
 window.addEventListener('scroll', onScroll, { passive: true });
 document.documentElement.lang = settings.lang;
+applyTheme();
 route();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

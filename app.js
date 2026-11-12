@@ -33,6 +33,15 @@ const STR = {
     c_museum: 'Muzeu', c_castle: 'Castel', c_palace: 'Palat', c_gallery: 'Galerie', c_zoo: 'Gradina zoologica',
     c_aquarium: 'Acvariu', c_theme_park: 'Parc de distractii', c_viewpoint: 'Punct de belvedere', c_attraction: 'Atractie',
     c_historic: 'Obiectiv istoric', c_park: 'Parc', c_church: 'Biserica', c_monument: 'Monument',
+    edit: 'Editeaza', done: 'Gata', remove: 'Scoate', moveTo: 'Muta in...', addHere: 'Adauga in ziua asta', regen: 'Regenereaza ziua',
+    didntFit: '{name} nu a incaput in program, l-am pus la Daca mai ai timp.', noAlternatives: 'Nu mai am alte atractii in zona pentru ziua asta.',
+    todayIn: 'Azi in {city}', todayDay: 'ziua {n} din {total}', nextAt: 'Urmeaza la {t}', locate: 'Cat am de mers?', locating: 'Caut locatia...',
+    distance: 'Esti la {d}, cam {m} min pe jos.', locErr: 'Nu am putut afla locatia. Verifica permisiunea de localizare pentru Hoinar.', dayDone: 'Programul de azi s-a incheiat.',
+    howTo: 'Cum ajung', peron: 'Adresa Peron', peronHint: 'Optional. Daca o completezi, Cum ajung deschide Peron; altfel deschide Apple Maps.',
+    offline: 'Salveaza harta pentru offline', offlineProgress: 'Descarc harta: {n} din {total}', offlineDone: 'Harta e salvata pentru offline.', offlineErr: 'Nu am putut descarca toata harta. Incearca din nou cu internet.',
+    calendar: 'Adauga in Calendar', calReady: 'Evenimentele sunt gata.', calOpen: 'Deschide in Calendar',
+    share: 'Trimite planul', shareReady: 'Linkul e gata. Cine il deschide primeste planul in Hoinar.', shareSend: 'Trimite linkul', copy: 'Copiaza linkul', copied: 'Copiat.',
+    preparing: 'Pregatesc...', loadingShared: 'Deschid planul primit...', sharedErr: 'Linkul a expirat sau nu s-a putut deschide.',
     dayN: 'Ziua {n}', dinner: 'Cina', lunchHint: 'Vezi restaurante in apropiere', nearStay: 'Restaurante langa cazare', restNear: 'Restaurante langa {place}',
     searching: 'Caut restaurante...', noRest: 'Nu am gasit restaurante in zona.', restSources: 'Surse: {s}',
     price1: 'ieftin', price2: 'pret mediu', price3: 'scump', price4: 'foarte scump',
@@ -63,6 +72,15 @@ const STR = {
     c_museum: 'Museum', c_castle: 'Castle', c_palace: 'Palace', c_gallery: 'Gallery', c_zoo: 'Zoo',
     c_aquarium: 'Aquarium', c_theme_park: 'Theme park', c_viewpoint: 'Viewpoint', c_attraction: 'Attraction',
     c_historic: 'Historic site', c_park: 'Park', c_church: 'Church', c_monument: 'Monument',
+    edit: 'Edit', done: 'Done', remove: 'Remove', moveTo: 'Move to...', addHere: 'Add to this day', regen: 'Rebuild this day',
+    didntFit: '{name} didn\u2019t fit the day and moved to If you have time.', noAlternatives: 'No other sights nearby for this day.',
+    todayIn: 'Today in {city}', todayDay: 'day {n} of {total}', nextAt: 'Next at {t}', locate: 'How far is it?', locating: 'Getting your location...',
+    distance: 'You\u2019re {d} away, about {m} min on foot.', locErr: 'Couldn\u2019t get your location. Check Hoinar\u2019s location permission.', dayDone: 'Today\u2019s plan is done.',
+    howTo: 'How to get there', peron: 'Peron address', peronHint: 'Optional. If set, How to get there opens Peron; otherwise Apple Maps.',
+    offline: 'Save map for offline', offlineProgress: 'Downloading map: {n} of {total}', offlineDone: 'Map saved for offline.', offlineErr: 'Couldn\u2019t download the whole map. Try again with internet.',
+    calendar: 'Add to Calendar', calReady: 'Your events are ready.', calOpen: 'Open in Calendar',
+    share: 'Share plan', shareReady: 'The link is ready. Anyone who opens it gets the plan in Hoinar.', shareSend: 'Send link', copy: 'Copy link', copied: 'Copied.',
+    preparing: 'Preparing...', loadingShared: 'Opening shared plan...', sharedErr: 'This link has expired or couldn\u2019t be opened.',
     dayN: 'Day {n}', dinner: 'Dinner', lunchHint: 'See nearby restaurants', nearStay: 'Restaurants near your stay', restNear: 'Restaurants near {place}',
     searching: 'Finding restaurants...', noRest: 'No restaurants found nearby.', restSources: 'Sources: {s}',
     price1: 'cheap', price2: 'mid-range', price3: 'pricey', price4: 'very pricey',
@@ -83,7 +101,7 @@ const store = (k, v) => {
 };
 
 const settings = Object.assign(
-  { api: DEFAULT_API, token: '', lang: (navigator.language || '').toLowerCase().startsWith('ro') ? 'ro' : 'en' },
+  { api: DEFAULT_API, token: '', peron: '', lang: (navigator.language || '').toLowerCase().startsWith('ro') ? 'ro' : 'en' },
   load(K_SETTINGS, {})
 );
 const trips = load(K_TRIPS, {});
@@ -98,7 +116,7 @@ if (location.hash.startsWith('#key=')) {
 
 const app = document.getElementById('app');
 const sheet = document.getElementById('sheet');
-const state = { tripId: null, day: 0 };
+const state = { tripId: null, day: 0, edit: false };
 let map = null;
 
 const t = (k, v = {}) => (STR[settings.lang]?.[k] ?? STR.en[k] ?? k).replace(/\{(\w+)\}/g, (_, n) => v[n] ?? '');
@@ -273,6 +291,304 @@ function inDays(spec, wd) {
     });
 }
 
+const DAY_END = { relaxed: 17 * 60 + 30, normal: 19 * 60, intense: 20 * 60 + 30 };
+const toMin = (s) => +s.slice(0, 2) * 60 + +s.slice(3, 5);
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const uniq = (a) => [...new Set(a)];
+function dist(a, b) {
+  const rad = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+const travelFor = (km) => (km <= 2 ? { min: Math.max(5, Math.round((km / 4.5) * 60)), mode: 'walk' } : { min: Math.round(15 + km * 3), mode: 'transit' });
+const fmtKm = (km) => (km < 1 ? `${Math.round(km * 100) * 10} m` : `${new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(km)} km`);
+
+function tzNow(tz) {
+  const d = new Date();
+  try {
+    return {
+      date: d.toLocaleDateString('sv', { timeZone: tz }),
+      min: toMin(d.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false })),
+    };
+  } catch {
+    return { date: d.toLocaleDateString('sv'), min: d.getHours() * 60 + d.getMinutes() };
+  }
+}
+const todayIndex = (trip) => trip.plan.days.findIndex((d) => d.date === tzNow(trip.plan.geo?.timezone).date);
+const dayIds = (trip, d) => trip.plan.days[d].items.filter((i) => i.type === 'visit').map((i) => i.attractionId);
+
+function buildDay(trip, d, ids) {
+  const p = trip.plan;
+  const { date, weather } = p.days[d];
+  const end = DAY_END[p.pace || trip.input.prefs?.pace] || DAY_END.normal;
+  const sunset = weather?.sunset ? toMin(weather.sunset) : null;
+  const day = { items: [], t: 9 * 60 + 30, pos: p.stay, lunch: false };
+  const left = ids.map((id) => info(trip, id)).filter(Boolean);
+  const dropped = [];
+  while (left.length) {
+    left.sort((a, b) => dist(day.pos, a) - dist(day.pos, b));
+    const it = left.shift();
+    const tr = travelFor(dist(day.pos, it));
+    let arrive = day.t + tr.min;
+    const needLunch = !day.lunch && arrive >= 13 * 60;
+    if (needLunch) arrive += 60;
+    const oh = hoursOn(it.hours, date);
+    if (oh && arrive < oh[0]) arrive = oh[0];
+    const leave = arrive + it.durationMin;
+    if (oh === null || (oh && leave > oh[1]) || leave > end || (!it.indoor && sunset && leave > sunset)) {
+      dropped.push(it.id);
+      continue;
+    }
+    if (needLunch) {
+      day.items.push({ time: hhmm(day.t), type: 'lunch', durationMin: 60 });
+      day.lunch = true;
+    }
+    day.items.push({ time: hhmm(arrive), type: 'visit', attractionId: it.id, travelMin: tr.min, travelMode: tr.mode });
+    day.t = leave;
+    day.pos = it;
+  }
+  if (!day.lunch && day.items.length && day.t >= 12 * 60) {
+    day.items.push({ time: hhmm(day.t), type: 'lunch', durationMin: 60 });
+    day.t += 60;
+  }
+  if (day.items.length) day.items.push({ time: hhmm(Math.max(day.t + 15, 18 * 60 + 30)), type: 'dinner', durationMin: 90 });
+  p.days[d].items = day.items;
+  for (const ai of Object.values(trip.aiByLang || {})) if (ai?.dayTitles) delete ai.dayTitles[date];
+  return dropped;
+}
+
+function afterEdit(trip, dropped = [], moved = null) {
+  const p = trip.plan;
+  const scheduled = new Set(p.days.flatMap((_, i) => dayIds(trip, i)));
+  p.extras = uniq([...dropped, ...p.extras]).filter((id) => !scheduled.has(id));
+  saveTrips();
+  renderTrip(trip, true);
+  if (moved && dropped.includes(moved)) toast(t('didntFit', { name: info(trip, moved).name }));
+}
+
+function removeFromDay(trip, d, id) {
+  const dropped = buildDay(trip, d, dayIds(trip, d).filter((x) => x !== id));
+  afterEdit(trip, [id, ...dropped]);
+}
+
+function moveToDay(trip, from, to, id) {
+  let dropped = [];
+  if (from != null) dropped = buildDay(trip, from, dayIds(trip, from).filter((x) => x !== id));
+  trip.plan.extras = trip.plan.extras.filter((x) => x !== id);
+  dropped.push(...buildDay(trip, to, [...dayIds(trip, to), id]));
+  afterEdit(trip, dropped, id);
+}
+
+function regenerateDay(trip, d) {
+  const p = trip.plan;
+  const current = dayIds(trip, d);
+  const used = new Set(p.days.flatMap((_, i) => (i === d ? [] : dayIds(trip, i))));
+  const pts = current.map((id) => info(trip, id)).filter(Boolean);
+  const center = pts.length ? { lat: pts.reduce((s, a) => s + a.lat, 0) / pts.length, lon: pts.reduce((s, a) => s + a.lon, 0) / pts.length } : p.stay;
+  const n = Math.max(current.length, 4);
+  const pool = uniq([...p.extras, ...(p.alternates || [])])
+    .filter((id) => !used.has(id) && !current.includes(id))
+    .map((id) => info(trip, id))
+    .filter((a) => a && dist(center, a) < 3)
+    .sort((a, b) => (b.score || 0) - (a.score || 0))
+    .slice(0, n)
+    .map((a) => a.id);
+  if (!pool.length) return toast(t('noAlternatives'));
+  const pick = [...pool, ...current].slice(0, n);
+  const dropped = buildDay(trip, d, pick);
+  p.alternates = (p.alternates || []).filter((id) => !pick.includes(id));
+  afterEdit(trip, [...dropped, ...current.filter((id) => !pick.includes(id))]);
+}
+
+function toast(msg) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'toast';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function howToUrl(from, to, toName) {
+  if (settings.peron) {
+    const u = new URL(settings.peron, location.href);
+    u.searchParams.set('from', `${from.lat},${from.lon}`);
+    u.searchParams.set('to', `${to.lat},${to.lon}`);
+    u.searchParams.set('toName', toName);
+    return u.href;
+  }
+  return `https://maps.apple.com/?saddr=${from.lat},${from.lon}&daddr=${to.lat},${to.lon}&dirflg=r`;
+}
+
+function tileList(trip) {
+  const lon2x = (lon, z) => Math.floor(((lon + 180) / 360) * 2 ** z);
+  const lat2y = (lat, z) => {
+    const r = (lat * Math.PI) / 180;
+    return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z);
+  };
+  const build = (maxZ) => {
+    const set = new Set();
+    for (const d of trip.plan.days) {
+      const pts = [trip.plan.stay, ...d.items.filter((i) => i.type === 'visit').map((i) => info(trip, i.attractionId)).filter(Boolean)];
+      const s = Math.min(...pts.map((x) => x.lat)) - 0.004;
+      const n = Math.max(...pts.map((x) => x.lat)) + 0.004;
+      const w = Math.min(...pts.map((x) => x.lon)) - 0.006;
+      const e = Math.max(...pts.map((x) => x.lon)) + 0.006;
+      for (let z = 12; z <= maxZ; z++) {
+        for (let x = lon2x(w, z); x <= lon2x(e, z); x++) for (let y = lat2y(n, z); y <= lat2y(s, z); y++) set.add(`${z}/${x}/${y}`);
+      }
+    }
+    return [...set];
+  };
+  const list = build(16);
+  return list.length > 900 ? build(15) : list;
+}
+
+async function saveOffline(trip) {
+  const tiles = tileList(trip);
+  showSheet(`<h2 id="sheet-title" class="sheet-top">${t('offline')}</h2><p class="sub" id="op">${t('offlineProgress', { n: 0, total: tiles.length })}</p>`);
+  const cache = await caches.open('hoinar-tiles');
+  let done = 0;
+  let failed = 0;
+  const queue = [...tiles];
+  const worker = async () => {
+    while (queue.length) {
+      const url = `https://tile.openstreetmap.org/${queue.shift()}.png`;
+      try {
+        if (!(await cache.match(url))) {
+          const r = await fetch(url, { mode: 'cors' });
+          if (r.ok) await cache.put(url, r);
+          else failed++;
+        }
+      } catch {
+        failed++;
+      }
+      done++;
+      const el = document.getElementById('op');
+      if (el && done % 10 === 0) el.textContent = t('offlineProgress', { n: done, total: tiles.length });
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  if (!failed) {
+    trip.offline = Date.now();
+    saveTrips();
+  }
+  const el = document.getElementById('op');
+  if (el) el.textContent = failed ? t('offlineErr') : t('offlineDone');
+}
+
+function buildIcs(trip) {
+  const p = trip.plan;
+  const tz = p.geo?.timezone;
+  const esc2 = (x) => String(x || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  const fold = (line) => {
+    const out = [];
+    for (let i = 0; i < line.length; i += 70) out.push((i ? ' ' : '') + line.slice(i, i + 70));
+    return out.join('\r\n');
+  };
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const dt = (date, m) => `${date.replace(/-/g, '')}T${hhmm(m).replace(':', '')}00`;
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Hoinar//EN', 'CALSCALE:GREGORIAN', `X-WR-CALNAME:Hoinar ${p.city}`];
+  for (const d of p.days) {
+    for (const it of d.items) {
+      if (it.type !== 'visit') continue;
+      const a = info(trip, it.attractionId);
+      if (!a) continue;
+      const start = toMin(it.time);
+      const tzp = tz ? `;TZID=${tz}` : '';
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${trip.id}-${d.date}-${a.id}@hoinar`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART${tzp}:${dt(d.date, start)}`,
+        `DTEND${tzp}:${dt(d.date, start + a.durationMin)}`,
+        `SUMMARY:${esc2(a.name)}`,
+        `LOCATION:${esc2(`${a.name}, ${p.city}`)}`,
+        `GEO:${a.lat};${a.lon}`,
+        `DESCRIPTION:${esc2(`${a.desc ? a.desc + '\n\n' : ''}https://maps.apple.com/?daddr=${a.lat},${a.lon}`)}`,
+        'END:VEVENT'
+      );
+    }
+  }
+  lines.push('END:VCALENDAR');
+  return lines.map(fold).join('\r\n');
+}
+
+async function exportCalendar(trip) {
+  showSheet(`<h2 id="sheet-title" class="sheet-top">${t('calendar')}</h2><p class="sub">${t('preparing')}</p>`);
+  try {
+    const r = await api('/ics', { ics: buildIcs(trip) }, 20000);
+    showSheet(`<h2 id="sheet-title" class="sheet-top">${t('calendar')}</h2><p class="sub">${t('calReady')}</p><div class="actions"><a class="btn primary" href="${esc(r.url)}" target="_blank" rel="noopener">${t('calOpen')}</a></div>`);
+  } catch (e) {
+    showSheet(`<h2 id="sheet-title" class="sheet-top">${t('calendar')}</h2><p class="error">${esc(e.message)}</p>`);
+  }
+}
+
+async function shareTrip(trip) {
+  showSheet(`<h2 id="sheet-title" class="sheet-top">${t('share')}</h2><p class="sub">${t('preparing')}</p>`);
+  try {
+    if (!trip.shareId) {
+      const { input, plan, aiByLang, osm } = trip;
+      trip.shareId = (await api('/share', { input, plan, aiByLang, osm }, 20000)).id;
+      saveTrips();
+    }
+    const url = `${location.origin}${location.pathname}#share=${trip.shareId}`;
+    showSheet(
+      `<h2 id="sheet-title" class="sheet-top">${t('share')}</h2><p class="sub">${t('shareReady')}</p><div class="actions">${
+        navigator.share ? `<button class="btn primary" id="sh-send" type="button">${t('shareSend')}</button>` : ''
+      }<button class="btn" id="sh-copy" type="button">${t('copy')}</button></div>`
+    );
+    document.getElementById('sh-send')?.addEventListener('click', () => navigator.share({ title: `Hoinar: ${trip.plan.city}`, url }).catch(() => {}));
+    document.getElementById('sh-copy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast(t('copied'));
+      } catch {
+        prompt('', url);
+      }
+    });
+  } catch (e) {
+    showSheet(`<h2 id="sheet-title" class="sheet-top">${t('share')}</h2><p class="error">${esc(e.message)}</p>`);
+  }
+}
+
+async function importShared(id) {
+  app.innerHTML = `<header class="bar"><a class="link-btn" href="#/">${t('back')}</a></header><p class="lead">${t('loadingShared')}</p>`;
+  try {
+    const r = await fetch(`${settings.api.replace(/\/+$/, '')}/share/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    const existing = Object.values(trips).find((x) => x.sharedFrom === id);
+    const trip = existing || { id: crypto.randomUUID(), created: Date.now(), sharedFrom: id, ...data, aiByLang: data.aiByLang || {} };
+    trips[trip.id] = trip;
+    saveTrips();
+    history.replaceState(null, '', `${location.pathname}#/trip/${trip.id}`);
+    route();
+  } catch {
+    app.innerHTML = `<header class="bar"><a class="link-btn" href="#/">${t('back')}</a></header><p class="error">${t('sharedErr')}</p>`;
+  }
+}
+
+function locate(trip, a) {
+  const out = document.getElementById('now-dist');
+  if (!navigator.geolocation || !out) return;
+  out.textContent = t('locating');
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const km = dist({ lat: pos.coords.latitude, lon: pos.coords.longitude }, a);
+      out.textContent = t('distance', { d: fmtKm(km), m: Math.max(1, Math.round((km / 4.5) * 60)) });
+    },
+    () => (out.textContent = t('locErr')),
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
+  );
+}
+
 function route() {
   closeSheet();
   if (map) {
@@ -280,10 +596,14 @@ function route() {
     map = null;
   }
   const h = location.hash.slice(1) || '/';
+  if (h.startsWith('share=')) return importShared(h.slice(6));
   if (h.startsWith('/trip/')) {
     const trip = trips[h.slice(6)];
     if (trip) {
-      if (state.tripId !== trip.id) state.day = 0;
+      if (state.tripId !== trip.id) {
+        state.day = Math.max(0, todayIndex(trip));
+        state.edit = false;
+      }
       renderTrip(trip);
       enrich(trip);
       return;
@@ -302,6 +622,14 @@ function renderHome() {
     <h1 class="wordmark">Hoinar</h1>
     <p class="lead">${t('tagline')}</p>
     ${settings.token ? '' : `<p class="notice">${t('needToken')} <a href="#/settings">${t('openSettings')}</a></p>`}
+    ${list
+      .map((tr) => ({ tr, i: todayIndex(tr) }))
+      .filter((x) => x.i >= 0)
+      .map(
+        ({ tr, i }) =>
+          `<a class="today" href="#/trip/${tr.id}"><strong>${esc(t('todayIn', { city: tr.plan.city }))}</strong><span>${t('todayDay', { n: i + 1, total: tr.plan.days.length })}</span></a>`
+      )
+      .join('')}
     ${
       list.length
         ? `<ul class="trips">${list
@@ -379,6 +707,14 @@ function renderTrip(trip, keepScroll = false) {
 
   let n = 0;
   let last = { lat: p.stay.lat, lon: p.stay.lon, name: t('stayLabel') };
+  const now = tzNow(p.geo?.timezone);
+  const isToday = day.date === now.date;
+  const visits = day.items.filter((i) => i.type === 'visit');
+  const next = isToday ? visits.find((i) => toMin(i.time) + (info(trip, i.attractionId)?.durationMin || 0) > now.min) : null;
+  const moveOpts = (id) =>
+    `<select data-move="${id}" aria-label="${t('moveTo')}"><option value="">${t('moveTo')}</option>${p.days
+      .map((d, i) => (i === state.day ? '' : `<option value="${i}">${fmt(d.date, { weekday: 'short', day: 'numeric' })}</option>`))
+      .join('')}</select>`;
   const rows = [
     `<li class="start"><span></span><span class="rail"><span class="dot">\u2302</span></span><div class="stop-body"><strong>${t('stayLabel')}</strong><span class="sub">${esc(stayName)}</span></div></li>`,
   ];
@@ -394,13 +730,19 @@ function renderTrip(trip, keepScroll = false) {
     const a = info(trip, it.attractionId);
     if (!a) continue;
     n++;
+    const from = last;
     last = { lat: a.lat, lon: a.lon, name: a.name };
     const closed = hoursOn(a.hours, day.date) === null;
+    const how = it.travelMode === 'transit' ? ` <a class="leg-link" href="${esc(howToUrl(from, a, a.name))}" target="_blank" rel="noopener">${t('howTo')}</a>` : '';
     rows.push(
-      `<li class="leg ${it.travelMode}"><span></span><span class="rail"></span><span class="note">${t(it.travelMode === 'walk' ? 'walk' : 'transit', { n: it.travelMin })}</span></li>`,
-      `<li><time>${it.time}</time><span class="rail"><span class="dot">${n}</span></span><button class="stop-body" data-id="${a.id}"><strong>${esc(a.name)}</strong><span class="sub">${t('c_' + a.category)}, ${a.durationMin} min</span>${
+      `<li class="leg ${it.travelMode}"><span></span><span class="rail"></span><span class="note">${t(it.travelMode === 'walk' ? 'walk' : 'transit', { n: it.travelMin })}${how}</span></li>`,
+      `<li class="${next === it ? 'next' : ''}"><time>${it.time}</time><span class="rail"><span class="dot">${n}</span></span><button class="stop-body" data-id="${a.id}"><strong>${esc(a.name)}</strong><span class="sub">${t('c_' + a.category)}, ${a.durationMin} min</span>${
         closed ? `<span class="warn">${t('closed')}</span>` : ''
-      }</button></li>`
+      }</button>${
+        state.edit
+          ? `<span></span><span class="rail"></span><div class="edit-row"><button class="chip-btn" type="button" data-remove="${a.id}">${t('remove')}</button>${p.days.length > 1 ? moveOpts(a.id) : ''}</div>`
+          : ''
+      }</li>`
     );
   }
 
@@ -408,7 +750,9 @@ function renderTrip(trip, keepScroll = false) {
   const tips = ai?.tips || [];
 
   app.innerHTML = `
-    <header class="bar"><a class="link-btn" href="#/">${t('back')}</a><button class="link-btn danger" id="del" type="button">${t('delete')}</button></header>
+    <header class="bar"><a class="link-btn" href="#/">${t('back')}</a><span class="bar-right"><button class="link-btn" id="edit" type="button">${state.edit ? t('done') : t('edit')}</button>${
+      state.edit ? `<button class="link-btn danger" id="del" type="button">${t('delete')}</button>` : ''
+    }</span></header>
     <h1 class="city">${esc(p.city)}</h1>
     <p class="meta">${fmtRange(trip.input.start, trip.input.end)}, ${esc(p.country)}</p>
     ${ai?.summary ? `<p class="summary">${esc(ai.summary)}</p>` : ai ? '' : `<p class="pending">${t('aiPending')}</p>`}
@@ -428,17 +772,38 @@ function renderTrip(trip, keepScroll = false) {
           ? `<p class="wxline">${wxIcon(w.code)} ${Math.round(w.tmin)}\u2013${Math.round(w.tmax)}\u00B0C, ${t('rain', { n: w.rainProb ?? 0 })}${w.sunset ? `, ${t('sunset', { t: w.sunset })}` : ''}</p>`
           : ''
       }
+      ${
+        next
+          ? (() => {
+              const a = info(trip, next.attractionId);
+              return `<div class="now"><p class="sub">${t('nextAt', { t: next.time })}</p><strong>${esc(a.name)}</strong><p class="sub" id="now-dist"></p><div class="actions"><a class="btn primary" href="https://maps.apple.com/?daddr=${a.lat},${a.lon}&dirflg=w" target="_blank" rel="noopener">${t('navigate')}</a><button class="btn" id="locate" type="button" data-target="${a.id}">${t('locate')}</button></div></div>`;
+            })()
+          : isToday && visits.length
+          ? `<p class="wxline">${t('dayDone')}</p>`
+          : ''
+      }
       <ol class="route">${rows.join('')}</ol>
+      ${state.edit ? `<button class="btn wide" id="regen" type="button">${t('regen')}</button>` : ''}
       <button class="btn wide" type="button" data-near="${p.stay.lat},${p.stay.lon}" data-place="${esc(t('stayLabel').toLowerCase())}">${t('nearStay')}</button>
     </section>
     ${
       extras.length
         ? `<h2 class="section-title">${t('extras')}</h2><ul class="extras">${extras
-            .map((a) => `<li><button type="button" data-id="${a.id}">${esc(a.name)}<span class="sub">${t('c_' + a.category)}, ${a.durationMin} min</span></button></li>`)
+            .map(
+              (a) =>
+                `<li><button type="button" data-id="${a.id}">${esc(a.name)}<span class="sub">${t('c_' + a.category)}, ${a.durationMin} min</span></button>${
+                  state.edit ? `<button class="chip-btn" type="button" data-add="${a.id}">${t('addHere')}</button>` : ''
+                }</li>`
+            )
             .join('')}</ul>`
         : ''
     }
-    ${tips.length ? `<details class="tips"><summary>${t('tips')}</summary><ul>${tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}`;
+    ${tips.length ? `<details class="tips"><summary>${t('tips')}</summary><ul>${tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}
+    <div class="trip-actions">
+      <button class="btn" id="act-offline" type="button">${t('offline')}</button>
+      <button class="btn" id="act-cal" type="button">${t('calendar')}</button>
+      <button class="btn" id="act-share" type="button">${t('share')}</button>
+    </div>`;
 
   app.querySelectorAll('[data-day]').forEach((b) =>
     b.addEventListener('click', () => {
@@ -453,7 +818,21 @@ function renderTrip(trip, keepScroll = false) {
       openRestaurants(trip, lat, lon, b.dataset.place);
     })
   );
-  document.getElementById('del').addEventListener('click', () => {
+  document.getElementById('edit').addEventListener('click', () => {
+    state.edit = !state.edit;
+    renderTrip(trip, true);
+  });
+  app.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => removeFromDay(trip, state.day, b.dataset.remove)));
+  app.querySelectorAll('[data-move]').forEach((sel) =>
+    sel.addEventListener('change', () => sel.value !== '' && moveToDay(trip, state.day, +sel.value, sel.dataset.move))
+  );
+  app.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => moveToDay(trip, null, state.day, b.dataset.add)));
+  document.getElementById('regen')?.addEventListener('click', () => regenerateDay(trip, state.day));
+  document.getElementById('locate')?.addEventListener('click', (e) => locate(trip, info(trip, e.currentTarget.dataset.target)));
+  document.getElementById('act-offline').addEventListener('click', () => saveOffline(trip));
+  document.getElementById('act-cal').addEventListener('click', () => exportCalendar(trip));
+  document.getElementById('act-share').addEventListener('click', () => shareTrip(trip));
+  document.getElementById('del')?.addEventListener('click', () => {
     if (!confirm(t('confirmDelete', { city: p.city }))) return;
     delete trips[trip.id];
     saveTrips();
@@ -646,6 +1025,7 @@ function renderSettings() {
       <div class="field"><label for="lang">${t('language')}</label><select id="lang"><option value="ro"${settings.lang === 'ro' ? ' selected' : ''}>Romana</option><option value="en"${
         settings.lang === 'en' ? ' selected' : ''
       }>English</option></select></div>
+      <div class="field"><label for="peron">${t('peron')}</label><input id="peron" type="url" autocomplete="off" placeholder="https://acidburn11.github.io/peron/" value="${esc(settings.peron)}"><p class="hint">${t('peronHint')}</p></div>
       <div class="field"><label for="api">${t('api')}</label><input id="api" type="url" autocomplete="off" value="${esc(settings.api)}"></div>
       <p class="ok" id="msg" role="status"></p>
       <div class="cta"><button class="btn primary" type="submit">${t('save')}</button></div>
@@ -656,6 +1036,7 @@ function renderSettings() {
     settings.token = f.token.value.trim();
     settings.lang = document.getElementById('lang').value;
     settings.api = f.api.value.trim() || DEFAULT_API;
+    settings.peron = document.getElementById('peron').value.trim();
     saveSettings();
     document.documentElement.lang = settings.lang;
     renderSettings();

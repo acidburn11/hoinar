@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'hoinar-shell-v8';
+const SHELL_CACHE = 'hoinar-shell-v10';
 const TILE_CACHE = 'hoinar-tiles';
 const SHELL = [
   './',

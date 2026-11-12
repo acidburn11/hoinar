@@ -33,6 +33,8 @@ const STR = {
     c_museum: 'Muzeu', c_castle: 'Castel', c_palace: 'Palat', c_gallery: 'Galerie', c_zoo: 'Gradina zoologica',
     c_aquarium: 'Acvariu', c_theme_park: 'Parc de distractii', c_viewpoint: 'Punct de belvedere', c_attraction: 'Atractie',
     c_historic: 'Obiectiv istoric', c_park: 'Parc', c_church: 'Biserica', c_monument: 'Monument',
+    moreActions: 'Mai multe', schedule: 'Programul zilei', nearStayHint: 'Celebre si cele mai apreciate', offlineHint: 'Traseul si harta fara internet', offlineSaved: 'Salvata pe telefon',
+    calHint: 'Fiecare vizita, cu ora si locul', shareHint: 'Un link pe care il poate deschide oricine', deleteTrip: 'Sterge calatoria',
     edit: 'Editeaza', done: 'Gata', remove: 'Scoate', moveTo: 'Muta in...', addHere: 'Adauga in ziua asta', regen: 'Regenereaza ziua',
     didntFit: '{name} nu a incaput in program, l-am pus la Daca mai ai timp.', noAlternatives: 'Nu mai am alte atractii in zona pentru ziua asta.',
     todayIn: 'Azi in {city}', todayDay: 'ziua {n} din {total}', nextAt: 'Urmeaza la {t}', locate: 'Cat am de mers?', locating: 'Caut locatia...',
@@ -43,6 +45,7 @@ const STR = {
     share: 'Trimite planul', shareReady: 'Linkul e gata. Cine il deschide primeste planul in Hoinar.', shareSend: 'Trimite linkul', copy: 'Copiaza linkul', copied: 'Copiat.',
     preparing: 'Pregatesc...', loadingShared: 'Deschid planul primit...', sharedErr: 'Linkul a expirat sau nu s-a putut deschide.',
     dayN: 'Ziua {n}', dinner: 'Cina', lunchHint: 'Vezi restaurante in apropiere', nearStay: 'Restaurante langa cazare', restNear: 'Restaurante langa {place}',
+    famousIn: 'Celebre in {city}', topNear: 'Cele mai apreciate in zona', inArea: 'In zona',
     searching: 'Caut restaurante...', noRest: 'Nu am gasit restaurante in zona.', restSources: 'Surse: {s}',
     price1: 'ieftin', price2: 'pret mediu', price3: 'scump', price4: 'foarte scump',
   },
@@ -72,6 +75,8 @@ const STR = {
     c_museum: 'Museum', c_castle: 'Castle', c_palace: 'Palace', c_gallery: 'Gallery', c_zoo: 'Zoo',
     c_aquarium: 'Aquarium', c_theme_park: 'Theme park', c_viewpoint: 'Viewpoint', c_attraction: 'Attraction',
     c_historic: 'Historic site', c_park: 'Park', c_church: 'Church', c_monument: 'Monument',
+    moreActions: 'More', schedule: 'Schedule', nearStayHint: 'Famous and top rated', offlineHint: 'Your route and map without internet', offlineSaved: 'Saved on this phone',
+    calHint: 'Each visit with time and place', shareHint: 'A link anyone can open', deleteTrip: 'Delete trip',
     edit: 'Edit', done: 'Done', remove: 'Remove', moveTo: 'Move to...', addHere: 'Add to this day', regen: 'Rebuild this day',
     didntFit: '{name} didn\u2019t fit the day and moved to If you have time.', noAlternatives: 'No other sights nearby for this day.',
     todayIn: 'Today in {city}', todayDay: 'day {n} of {total}', nextAt: 'Next at {t}', locate: 'How far is it?', locating: 'Getting your location...',
@@ -82,6 +87,7 @@ const STR = {
     share: 'Share plan', shareReady: 'The link is ready. Anyone who opens it gets the plan in Hoinar.', shareSend: 'Send link', copy: 'Copy link', copied: 'Copied.',
     preparing: 'Preparing...', loadingShared: 'Opening shared plan...', sharedErr: 'This link has expired or couldn\u2019t be opened.',
     dayN: 'Day {n}', dinner: 'Dinner', lunchHint: 'See nearby restaurants', nearStay: 'Restaurants near your stay', restNear: 'Restaurants near {place}',
+    famousIn: 'Famous in {city}', topNear: 'Top rated nearby', inArea: 'Nearby',
     searching: 'Finding restaurants...', noRest: 'No restaurants found nearby.', restSources: 'Sources: {s}',
     price1: 'cheap', price2: 'mid-range', price3: 'pricey', price4: 'very pricey',
   },
@@ -135,16 +141,6 @@ const addDays = (d, n) => {
   return x.toISOString().slice(0, 10);
 };
 const dayCount = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 864e5) + 1;
-
-function wxIcon(code) {
-  if (code === 0) return '\u2600\uFE0F';
-  if (code <= 2) return '\uD83C\uDF24\uFE0F';
-  if (code === 3) return '\u2601\uFE0F';
-  if (code === 45 || code === 48) return '\uD83C\uDF2B\uFE0F';
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return '\u2744\uFE0F';
-  if (code >= 95) return '\u26C8\uFE0F';
-  return '\uD83C\uDF27\uFE0F';
-}
 
 async function api(path, body, timeout = 60000) {
   if (!settings.token) throw new Error(t('errToken'));
@@ -217,6 +213,7 @@ function enrich(trip) {
     );
   }
   if (!trip.osm) jobs.push(fetchOsm(p).then((osm) => osm && (trip.osm = osm)));
+  if (p.attractions.some((a) => a.wikipedia && a.image === undefined)) jobs.push(pageImages(p.attractions));
   for (const j of jobs) {
     j.then(() => {
       saveTrips();
@@ -301,7 +298,7 @@ function dist(a, b) {
   return 12742 * Math.asin(Math.sqrt(h));
 }
 const travelFor = (km) => (km <= 2 ? { min: Math.max(5, Math.round((km / 4.5) * 60)), mode: 'walk' } : { min: Math.round(15 + km * 3), mode: 'transit' });
-const fmtKm = (km) => (km < 1 ? `${Math.round(km * 100) * 10} m` : `${new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(km)} km`);
+const fmtKm = (km) => (km < 1 ? `${Math.round(km * 100) * 10}\u00A0m` : `${new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(km)}\u00A0km`);
 
 function tzNow(tz) {
   const d = new Date();
@@ -595,6 +592,7 @@ function route() {
     map.remove();
     map = null;
   }
+  document.body.classList.remove('hero-page', 'scrolled');
   const h = location.hash.slice(1) || '/';
   if (h.startsWith('share=')) return importShared(h.slice(6));
   if (h.startsWith('/trip/')) {
@@ -615,43 +613,151 @@ function route() {
   renderHome();
 }
 
+const ICON = {
+  back: '<path d="m15 18-6-6 6-6"/>',
+  chev: '<path d="m9 18 6-6-6-6"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.38 3.62a2.12 2.12 0 0 1 3 3L7.38 18.62a2 2 0 0 1-.85.5l-3.53 1 1-3.53a2 2 0 0 1 .5-.85z"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  settings: '<path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/>',
+  walk: '<path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/>',
+  transit: '<rect width="16" height="16" x="4" y="3" rx="2"/><path d="M4 11h16"/><path d="M12 3v8"/><path d="m8 19-2 3"/><path d="m18 22-2-3"/><path d="M8 15h.01"/><path d="M16 15h.01"/>',
+  food: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  ticket: '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>',
+  nav: '<path d="M3 11 22 2l-9 19-2-8z"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M12 14v4"/><path d="M10 16h4"/>',
+  share: '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+  star: '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/>',
+  home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  book: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  locate: '<path d="M2 12h3"/><path d="M19 12h3"/><path d="M12 2v3"/><path d="M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/>',
+  landmark: '<path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="M12 2 20 7H4z"/>',
+  tree: '<path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M7 16v6"/><path d="M13 19v3"/><path d="M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5"/>',
+  mountain: '<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>',
+  move: '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+  add: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>',
+  remove: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  cloudsun: '<path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.95 12.65a4 4 0 0 0-5.93-4.13"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/>',
+  cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+  rain: '<path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>',
+  snow: '<path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24"/><path d="M8 15h.01"/><path d="M8 19h.01"/><path d="M12 17h.01"/><path d="M12 21h.01"/><path d="M16 15h.01"/><path d="M16 19h.01"/>',
+  fog: '<path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24"/><path d="M16 17H7"/><path d="M17 21H9"/>',
+  storm: '<path d="M6 16.33A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.97"/><path d="m13 12-3 5h4l-3 5"/>',
+  sunset: '<path d="M12 10V2"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m16 6-4 4-4-4"/><path d="M16 18a4 4 0 0 0-8 0"/>',
+  drop: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+};
+const icon = (name, cls = '') =>
+  `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[name] || ''}</svg>`;
+const CAT_ICON = { park: 'tree', viewpoint: 'mountain', zoo: 'tree' };
+const placeholder = (cat) => `<span class="ph">${icon(CAT_ICON[cat] || 'landmark')}</span>`;
+const pic = (src, cat, cls = '') => (src ? `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" decoding="async">` : placeholder(cat));
+const daysLabel = (n) => (settings.lang === 'ro' ? (n === 1 ? '1 zi' : `${n} zile`) : n === 1 ? '1 day' : `${n} days`);
+
+function wxIcon(code) {
+  if (code === 0) return icon('sun');
+  if (code <= 2) return icon('cloudsun');
+  if (code === 3) return icon('cloud');
+  if (code === 45 || code === 48) return icon('fog');
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return icon('snow');
+  if (code >= 95) return icon('storm');
+  return icon('rain');
+}
+
+async function pageImages(items, size = 640) {
+  const byHost = {};
+  for (const a of items) {
+    if (!a.wikipedia || a.image !== undefined) continue;
+    try {
+      const u = new URL(a.wikipedia);
+      const title = decodeURIComponent(u.pathname.split('/wiki/')[1] || '').replace(/_/g, ' ');
+      if (title) (byHost[u.origin] ||= []).push([a, title]);
+    } catch {}
+  }
+  let changed = false;
+  for (const [origin, list] of Object.entries(byHost)) {
+    for (let i = 0; i < list.length; i += 40) {
+      const chunk = list.slice(i, i + 40);
+      const p = new URLSearchParams({
+        action: 'query', format: 'json', origin: '*', prop: 'pageimages', piprop: 'thumbnail',
+        pithumbsize: String(size), pilimit: '50', redirects: '1', titles: chunk.map((x) => x[1]).join('|'),
+      });
+      try {
+        const r = await fetch(`${origin}/w/api.php?${p}`, { signal: AbortSignal.timeout(15000) });
+        const q = (await r.json()).query || {};
+        const alias = {};
+        for (const n of [...(q.normalized || []), ...(q.redirects || [])]) alias[n.from] = n.to;
+        const pages = Object.values(q.pages || {});
+        for (const [a, title] of chunk) {
+          let tt = title;
+          for (let k = 0; k < 3 && alias[tt]; k++) tt = alias[tt];
+          a.image = pages.find((x) => x.title === tt)?.thumbnail?.source || null;
+          changed = true;
+        }
+      } catch {}
+    }
+  }
+  return changed;
+}
+const heroImage = (trip) => trip.plan.attractions.find((a) => a.image)?.image || null;
+
 function renderHome() {
   const list = Object.values(trips).sort((a, b) => b.input.start.localeCompare(a.input.start));
   app.innerHTML = `
-    <header class="bar"><span></span><a class="link-btn" href="#/settings">${t('settings')}</a></header>
-    <h1 class="wordmark">Hoinar</h1>
+    <header class="home-head">
+      <h1 class="wordmark">Hoinar</h1>
+      <a class="icon-btn" href="#/settings" aria-label="${t('settings')}">${icon('settings')}</a>
+    </header>
     <p class="lead">${t('tagline')}</p>
-    ${settings.token ? '' : `<p class="notice">${t('needToken')} <a href="#/settings">${t('openSettings')}</a></p>`}
+    ${settings.token ? '' : `<a class="notice" href="#/settings">${t('needToken')} <strong>${t('openSettings')}</strong></a>`}
     ${list
       .map((tr) => ({ tr, i: todayIndex(tr) }))
       .filter((x) => x.i >= 0)
       .map(
         ({ tr, i }) =>
-          `<a class="today" href="#/trip/${tr.id}"><strong>${esc(t('todayIn', { city: tr.plan.city }))}</strong><span>${t('todayDay', { n: i + 1, total: tr.plan.days.length })}</span></a>`
+          `<a class="today" href="#/trip/${tr.id}">${icon('locate')}<span><strong>${esc(t('todayIn', { city: tr.plan.city }))}</strong><small>${t('todayDay', { n: i + 1, total: tr.plan.days.length })}</small></span>${icon('chev')}</a>`
       )
       .join('')}
     ${
       list.length
-        ? `<ul class="trips">${list
-            .map((tr) => `<li><a href="#/trip/${tr.id}"><span class="t-city">${esc(tr.plan.city)}</span><span class="t-dates">${fmtRange(tr.input.start, tr.input.end)}</span></a></li>`)
-            .join('')}</ul>`
-        : `<div class="empty"><p><strong>${t('emptyTitle')}</strong> ${t('emptyText')}</p></div>`
+        ? `<div class="trip-grid">${list
+            .map((tr) => {
+              const img = heroImage(tr);
+              return `<a class="trip-card" href="#/trip/${tr.id}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span class="tc-fill"></span>'}<span class="tc-text"><strong>${esc(
+                tr.plan.city
+              )}</strong><small>${fmtRange(tr.input.start, tr.input.end)}, ${daysLabel(tr.plan.days.length)}</small></span></a>`;
+            })
+            .join('')}</div>`
+        : `<div class="empty">${icon('globe')}<p><strong>${t('emptyTitle')}</strong></p><p>${t('emptyText')}</p></div>`
     }
-    <div class="cta"><a class="btn primary" href="#/new">${t('newTrip')}</a></div>`;
+    <div class="cta"><a class="btn primary pill" href="#/new">${icon('plus')}${t('newTrip')}</a></div>`;
+  list.filter((tr) => !heroImage(tr)).forEach((tr) => pageImages(tr.plan.attractions.slice(0, 6)).then((c) => c && (saveTrips(), location.hash.length < 3 && renderHome())));
+}
+
+function pageHead(title) {
+  return `<header class="page-head"><a class="icon-btn" href="#/" aria-label="${t('back')}">${icon('back')}</a></header><h1 class="page-title">${title}</h1>`;
 }
 
 function renderNew() {
   const start = addDays(today(), 1);
   app.innerHTML = `
-    <header class="bar"><a class="link-btn" href="#/">${t('back')}</a></header>
-    <h1 class="page-title">${t('newTrip')}</h1>
+    ${pageHead(t('newTrip'))}
     <form id="f" novalidate>
-      <div class="field"><label for="city">${t('city')}</label><input id="city" type="text" autocomplete="off" autocapitalize="words" placeholder="${t('cityPh')}"></div>
-      <div class="field row">
-        <div><label for="start">${t('from')}</label><input id="start" type="date" value="${start}"></div>
-        <div><label for="end">${t('to')}</label><input id="end" type="date" value="${addDays(start, 2)}"></div>
+      <div class="card form-card">
+        <div class="field"><label for="city">${t('city')}</label><input id="city" type="text" autocomplete="off" autocapitalize="words" placeholder="${t('cityPh')}"></div>
+        <div class="field row">
+          <div><label for="start">${t('from')}</label><input id="start" type="date" value="${start}"></div>
+          <div><label for="end">${t('to')}</label><input id="end" type="date" value="${addDays(start, 2)}"></div>
+        </div>
+        <div class="field last"><label for="stay">${t('stay')}</label><input id="stay" type="text" autocomplete="off" placeholder="${t('stayPh')}"><p class="hint">${t('stayHint')}</p></div>
       </div>
-      <div class="field"><label for="stay">${t('stay')}</label><input id="stay" type="text" autocomplete="off" placeholder="${t('stayPh')}"><p class="hint">${t('stayHint')}</p></div>
       <fieldset class="field"><legend class="label">${t('pace')}</legend><div class="seg">${['relaxed', 'normal', 'intense']
         .map((p) => `<label><input type="radio" name="pace" value="${p}"${p === 'normal' ? ' checked' : ''}><span>${t(p)}</span></label>`)
         .join('')}</div></fieldset>
@@ -659,7 +765,7 @@ function renderNew() {
         (i) => `<label><input type="checkbox" name="int" value="${i}"><span>${t('i_' + i)}</span></label>`
       ).join('')}</div></fieldset>
       <p class="error" id="err" role="alert"></p>
-      <div class="cta"><button class="btn primary" id="go" type="submit">${t('generate')}</button></div>
+      <div class="cta"><button class="btn primary pill" id="go" type="submit">${t('generate')}</button></div>
     </form>`;
 
   const f = document.getElementById('f');
@@ -683,7 +789,7 @@ function renderNew() {
     if (!input.start || !input.end || input.end < input.start) return (err.textContent = t('errDates'));
     if (dayCount(input.start, input.end) > 14) return (err.textContent = t('errLong'));
     go.disabled = true;
-    go.textContent = t('generating');
+    go.innerHTML = `<span class="spinner"></span>${t('generating')}`;
     try {
       await createTrip(input);
     } catch (x) {
@@ -704,26 +810,29 @@ function renderTrip(trip, keepScroll = false) {
   const title = ai?.dayTitles?.[day.date] || (settings.lang === trip.input.lang ? day.title : t('dayN', { n: state.day + 1 }));
   const w = day.weather;
   const stayName = trip.input.stay ? p.stay.label.split(',').slice(0, 2).join(',') : t('cityCenter');
+  const hero = heroImage(trip);
+
+  const now = tzNow(p.geo?.timezone);
+  const isToday = day.date === now.date;
+  const visits = day.items.filter((i) => i.type === 'visit' && info(trip, i.attractionId));
+  const next = isToday ? visits.find((i) => toMin(i.time) + info(trip, i.attractionId).durationMin > now.min) : null;
+  const moveOpts = (id) =>
+    `<label class="chip-btn select">${icon('move')}<select data-move="${id}" aria-label="${t('moveTo')}"><option value="">${t('moveTo')}</option>${p.days
+      .map((d, i) => (i === state.day ? '' : `<option value="${i}">${fmt(d.date, { weekday: 'short', day: 'numeric' })}</option>`))
+      .join('')}</select></label>`;
 
   let n = 0;
   let last = { lat: p.stay.lat, lon: p.stay.lon, name: t('stayLabel') };
-  const now = tzNow(p.geo?.timezone);
-  const isToday = day.date === now.date;
-  const visits = day.items.filter((i) => i.type === 'visit');
-  const next = isToday ? visits.find((i) => toMin(i.time) + (info(trip, i.attractionId)?.durationMin || 0) > now.min) : null;
-  const moveOpts = (id) =>
-    `<select data-move="${id}" aria-label="${t('moveTo')}"><option value="">${t('moveTo')}</option>${p.days
-      .map((d, i) => (i === state.day ? '' : `<option value="${i}">${fmt(d.date, { weekday: 'short', day: 'numeric' })}</option>`))
-      .join('')}</select>`;
+  const slides = [];
   const rows = [
-    `<li class="start"><span></span><span class="rail"><span class="dot">\u2302</span></span><div class="stop-body"><strong>${t('stayLabel')}</strong><span class="sub">${esc(stayName)}</span></div></li>`,
+    `<li class="start"><span></span><span class="rail"><span class="dot">${icon('home')}</span></span><div class="stop-body"><span class="txt"><strong>${t('stayLabel')}</strong><small>${esc(stayName)}</small></span></div></li>`,
   ];
   for (const it of day.items) {
     if (it.type === 'lunch' || it.type === 'dinner') {
       rows.push(
-        `<li class="lunch"><time>${it.time}</time><span class="rail"><span class="dot"></span></span><button class="stop-body" type="button" data-near="${last.lat},${last.lon}" data-place="${esc(
+        `<li class="meal"><time>${it.time}</time><span class="rail"><span class="dot">${icon('food')}</span></span><button class="stop-body" type="button" data-near="${last.lat},${last.lon}" data-place="${esc(
           last.name
-        )}"><strong>${t(it.type)}</strong><span class="sub link">${t('lunchHint')}</span></button></li>`
+        )}"><span class="txt"><strong>${t(it.type)}</strong><small class="link">${t('lunchHint')}</small></span>${icon('chev', 'go')}</button></li>`
       );
       continue;
     }
@@ -733,82 +842,94 @@ function renderTrip(trip, keepScroll = false) {
     const from = last;
     last = { lat: a.lat, lon: a.lon, name: a.name };
     const closed = hoursOn(a.hours, day.date) === null;
-    const how = it.travelMode === 'transit' ? ` <a class="leg-link" href="${esc(howToUrl(from, a, a.name))}" target="_blank" rel="noopener">${t('howTo')}</a>` : '';
+    const how = it.travelMode === 'transit' ? `<a class="leg-link" href="${esc(howToUrl(from, a, a.name))}" target="_blank" rel="noopener">${t('howTo')}</a>` : '';
     rows.push(
-      `<li class="leg ${it.travelMode}"><span></span><span class="rail"></span><span class="note">${t(it.travelMode === 'walk' ? 'walk' : 'transit', { n: it.travelMin })}${how}</span></li>`,
-      `<li class="${next === it ? 'next' : ''}"><time>${it.time}</time><span class="rail"><span class="dot">${n}</span></span><button class="stop-body" data-id="${a.id}"><strong>${esc(a.name)}</strong><span class="sub">${t('c_' + a.category)}, ${a.durationMin} min</span>${
-        closed ? `<span class="warn">${t('closed')}</span>` : ''
-      }</button>${
+      `<li class="leg"><span></span><span class="rail"></span><span class="note">${icon(it.travelMode === 'walk' ? 'walk' : 'transit')}${t(it.travelMode === 'walk' ? 'walk' : 'transit', { n: it.travelMin })}${how}</span></li>`,
+      `<li class="stop${next === it ? ' next' : ''}"><time>${it.time}</time><span class="rail"><span class="dot">${n}</span></span><button class="stop-body" type="button" data-id="${a.id}"><span class="thumb">${pic(
+        a.image,
+        a.category
+      )}</span><span class="txt"><strong>${esc(a.name)}</strong><small>${t('c_' + a.category)}, ${a.durationMin} min</small>${closed ? `<em class="warn">${t('closed')}</em>` : ''}</span></button>${
         state.edit
-          ? `<span></span><span class="rail"></span><div class="edit-row"><button class="chip-btn" type="button" data-remove="${a.id}">${t('remove')}</button>${p.days.length > 1 ? moveOpts(a.id) : ''}</div>`
+          ? `<span></span><span class="rail"></span><div class="edit-row"><button class="chip-btn" type="button" data-remove="${a.id}">${icon('remove')}${t('remove')}</button>${p.days.length > 1 ? moveOpts(a.id) : ''}</div>`
           : ''
       }</li>`
+    );
+    slides.push(
+      `<button class="slide${next === it ? ' next' : ''}" type="button" data-id="${a.id}"><span class="slide-img">${pic(a.image, a.category)}<span class="badge">${n}</span><span class="time">${icon('clock')}${it.time}</span></span><span class="slide-body"><strong>${esc(
+        a.name
+      )}</strong><small>${t('c_' + a.category)}, ${a.durationMin} min</small></span></button>`
     );
   }
 
   const extras = p.extras.map((id) => info(trip, id)).filter(Boolean);
   const tips = ai?.tips || [];
+  const nextA = next && info(trip, next.attractionId);
 
+  document.body.classList.add('hero-page');
   app.innerHTML = `
-    <header class="bar"><a class="link-btn" href="#/">${t('back')}</a><span class="bar-right"><button class="link-btn" id="edit" type="button">${state.edit ? t('done') : t('edit')}</button>${
-      state.edit ? `<button class="link-btn danger" id="del" type="button">${t('delete')}</button>` : ''
-    }</span></header>
-    <h1 class="city">${esc(p.city)}</h1>
-    <p class="meta">${fmtRange(trip.input.start, trip.input.end)}, ${esc(p.country)}</p>
-    ${ai?.summary ? `<p class="summary">${esc(ai.summary)}</p>` : ai ? '' : `<p class="pending">${t('aiPending')}</p>`}
+    <header class="hero${hero ? '' : ' no-img'}">
+      ${hero ? `<img src="${esc(hero)}" alt="">` : ''}
+      <div class="hero-bar">
+        <a class="round" href="#/" aria-label="${t('back')}">${icon('back')}</a>
+        <span class="hero-actions">
+          <button class="round${state.edit ? ' on' : ''}" id="edit" type="button" aria-label="${state.edit ? t('done') : t('edit')}">${icon(state.edit ? 'check' : 'edit')}</button>
+          <button class="round" id="more" type="button" aria-label="${t('moreActions')}">${icon('more')}</button>
+        </span>
+      </div>
+      <div class="hero-text"><h1>${esc(p.city)}</h1><p>${fmtRange(trip.input.start, trip.input.end)}, ${esc(p.country)}</p></div>
+    </header>
+    ${ai?.summary ? `<p class="summary">${esc(ai.summary)}</p>` : ai ? '' : `<p class="pending"><span class="spinner"></span>${t('aiPending')}</p>`}
     <nav class="days" role="tablist">${p.days
       .map(
         (d, i) =>
-          `<button role="tab" type="button" aria-selected="${i === state.day}" data-day="${i}"><span class="wd">${fmt(d.date, { weekday: 'short', day: 'numeric' })}</span>${
-            d.weather ? `<span class="wx">${wxIcon(d.weather.code)} ${Math.round(d.weather.tmax)}\u00B0</span>` : ''
+          `<button role="tab" type="button" aria-selected="${i === state.day}" data-day="${i}"><span class="wd">${fmt(d.date, { weekday: 'short' })}</span><span class="dn">${fmt(d.date, { day: 'numeric' })}</span>${
+            d.weather ? `<span class="wx">${wxIcon(d.weather.code)}${Math.round(d.weather.tmax)}\u00B0</span>` : ''
           }</button>`
       )
       .join('')}</nav>
-    <div id="map" class="map" role="img" aria-label="${esc(title)}"></div>
-    <section>
+    <section class="day">
       <h2 class="day-title">${esc(title)}</h2>
       ${
         w
-          ? `<p class="wxline">${wxIcon(w.code)} ${Math.round(w.tmin)}\u2013${Math.round(w.tmax)}\u00B0C, ${t('rain', { n: w.rainProb ?? 0 })}${w.sunset ? `, ${t('sunset', { t: w.sunset })}` : ''}</p>`
+          ? `<p class="wxline"><span>${wxIcon(w.code)}${Math.round(w.tmin)}\u2013${Math.round(w.tmax)}\u00B0C</span><span>${icon('drop')}${w.rainProb ?? 0}%</span>${
+              w.sunset ? `<span>${icon('sunset')}${w.sunset}</span>` : ''
+            }</p>`
           : ''
       }
       ${
-        next
-          ? (() => {
-              const a = info(trip, next.attractionId);
-              return `<div class="now"><p class="sub">${t('nextAt', { t: next.time })}</p><strong>${esc(a.name)}</strong><p class="sub" id="now-dist"></p><div class="actions"><a class="btn primary" href="https://maps.apple.com/?daddr=${a.lat},${a.lon}&dirflg=w" target="_blank" rel="noopener">${t('navigate')}</a><button class="btn" id="locate" type="button" data-target="${a.id}">${t('locate')}</button></div></div>`;
-            })()
+        nextA
+          ? `<div class="now"><span class="now-img">${pic(nextA.image, nextA.category)}</span><div class="now-body"><small>${t('nextAt', { t: next.time })}</small><strong>${esc(nextA.name)}</strong><small id="now-dist"></small><div class="now-actions"><a class="btn primary small" href="https://maps.apple.com/?daddr=${nextA.lat},${nextA.lon}&dirflg=w" target="_blank" rel="noopener">${icon('nav')}${t('navigate')}</a><button class="btn small" id="locate" type="button" data-target="${nextA.id}">${icon('locate')}${t('locate')}</button></div></div></div>`
           : isToday && visits.length
           ? `<p class="wxline">${t('dayDone')}</p>`
           : ''
       }
+      ${slides.length ? `<div class="slides" role="list">${slides.join('')}</div>` : ''}
+      <div class="map-card"><div id="map" class="map" role="img" aria-label="${esc(title)}"></div></div>
+      <h3 class="sec">${t('schedule')}</h3>
       <ol class="route">${rows.join('')}</ol>
-      ${state.edit ? `<button class="btn wide" id="regen" type="button">${t('regen')}</button>` : ''}
-      <button class="btn wide" type="button" data-near="${p.stay.lat},${p.stay.lon}" data-place="${esc(t('stayLabel').toLowerCase())}">${t('nearStay')}</button>
+      ${state.edit ? `<button class="btn wide" id="regen" type="button">${icon('refresh')}${t('regen')}</button>` : ''}
+      <button class="tile" type="button" data-near="${p.stay.lat},${p.stay.lon}" data-place="${esc(t('stayLabel').toLowerCase())}"><span class="tile-ic">${icon('food')}</span><span><strong>${t(
+        'nearStay'
+      )}</strong><small>${t('nearStayHint')}</small></span>${icon('chev', 'go')}</button>
     </section>
     ${
       extras.length
-        ? `<h2 class="section-title">${t('extras')}</h2><ul class="extras">${extras
+        ? `<h3 class="sec">${t('extras')}</h3><ul class="extras">${extras
             .map(
               (a) =>
-                `<li><button type="button" data-id="${a.id}">${esc(a.name)}<span class="sub">${t('c_' + a.category)}, ${a.durationMin} min</span></button>${
-                  state.edit ? `<button class="chip-btn" type="button" data-add="${a.id}">${t('addHere')}</button>` : ''
-                }</li>`
+                `<li><button class="stop-body" type="button" data-id="${a.id}"><span class="thumb">${pic(a.image, a.category)}</span><span class="txt"><strong>${esc(a.name)}</strong><small>${t(
+                  'c_' + a.category
+                )}, ${a.durationMin} min</small></span></button>${state.edit ? `<button class="chip-btn" type="button" data-add="${a.id}">${icon('add')}${t('addHere')}</button>` : ''}</li>`
             )
             .join('')}</ul>`
         : ''
     }
-    ${tips.length ? `<details class="tips"><summary>${t('tips')}</summary><ul>${tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}
-    <div class="trip-actions">
-      <button class="btn" id="act-offline" type="button">${t('offline')}</button>
-      <button class="btn" id="act-cal" type="button">${t('calendar')}</button>
-      <button class="btn" id="act-share" type="button">${t('share')}</button>
-    </div>`;
+    ${tips.length ? `<details class="tips card"><summary>${t('tips')}${icon('chev', 'go')}</summary><ul>${tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}`;
 
   app.querySelectorAll('[data-day]').forEach((b) =>
     b.addEventListener('click', () => {
       state.day = +b.dataset.day;
-      renderTrip(trip);
+      renderTrip(trip, true);
     })
   );
   app.querySelectorAll('[data-id]').forEach((b) => b.addEventListener('click', () => openSheet(trip, b.dataset.id, day.date)));
@@ -822,6 +943,7 @@ function renderTrip(trip, keepScroll = false) {
     state.edit = !state.edit;
     renderTrip(trip, true);
   });
+  document.getElementById('more').addEventListener('click', () => moreMenu(trip));
   app.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => removeFromDay(trip, state.day, b.dataset.remove)));
   app.querySelectorAll('[data-move]').forEach((sel) =>
     sel.addEventListener('change', () => sel.value !== '' && moveToDay(trip, state.day, +sel.value, sel.dataset.move))
@@ -829,18 +951,39 @@ function renderTrip(trip, keepScroll = false) {
   app.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => moveToDay(trip, null, state.day, b.dataset.add)));
   document.getElementById('regen')?.addEventListener('click', () => regenerateDay(trip, state.day));
   document.getElementById('locate')?.addEventListener('click', (e) => locate(trip, info(trip, e.currentTarget.dataset.target)));
-  document.getElementById('act-offline').addEventListener('click', () => saveOffline(trip));
-  document.getElementById('act-cal').addEventListener('click', () => exportCalendar(trip));
-  document.getElementById('act-share').addEventListener('click', () => shareTrip(trip));
-  document.getElementById('del')?.addEventListener('click', () => {
-    if (!confirm(t('confirmDelete', { city: p.city }))) return;
-    delete trips[trip.id];
-    saveTrips();
-    location.hash = '#/';
-  });
+  const nav = app.querySelector('.days');
+  const sel = nav?.querySelector('[aria-selected=true]');
+  if (sel) nav.scrollLeft = sel.offsetLeft - nav.clientWidth / 2 + sel.clientWidth / 2;
 
   drawMap(trip, day);
   if (keepScroll) window.scrollTo(0, y);
+  onScroll();
+}
+
+function moreMenu(trip) {
+  const item = (act, ic, title, hint, cls = '') =>
+    `<button class="menu-item ${cls}" type="button" data-act="${act}"><span class="tile-ic">${icon(ic)}</span><span><strong>${title}</strong>${hint ? `<small>${hint}</small>` : ''}</span></button>`;
+  showSheet(`<h2 id="sheet-title" class="sheet-top">${esc(trip.plan.city)}</h2><div class="menu">
+    ${item('offline', 'download', t('offline'), trip.offline ? t('offlineSaved') : t('offlineHint'))}
+    ${item('cal', 'calendar', t('calendar'), t('calHint'))}
+    ${item('share', 'share', t('share'), t('shareHint'))}
+    ${item('del', 'trash', t('deleteTrip'), '', 'danger')}
+  </div>`);
+  const on = (act, fn) => sheet.querySelector(`[data-act=${act}]`).addEventListener('click', fn);
+  on('offline', () => saveOffline(trip));
+  on('cal', () => exportCalendar(trip));
+  on('share', () => shareTrip(trip));
+  on('del', () => {
+    if (!confirm(t('confirmDelete', { city: trip.plan.city }))) return;
+    delete trips[trip.id];
+    saveTrips();
+    closeSheet();
+    location.hash = '#/';
+  });
+}
+
+function onScroll() {
+  document.body.classList.toggle('scrolled', window.scrollY > 200);
 }
 
 function drawMap(trip, day) {
@@ -854,28 +997,32 @@ function drawMap(trip, day) {
   map = L.map(el, { zoomControl: false, attributionControl: true, dragging: !touch, tap: false, touchZoom: true, scrollWheelZoom: !touch });
   if (touch) {
     let pinch = false;
-    el.addEventListener('touchstart', (e) => {
-      const multi = e.touches.length > 1;
-      if (multi !== pinch) {
-        pinch = multi;
-        multi ? map.dragging.enable() : map.dragging.disable();
-      }
-    }, { passive: true });
-    el.addEventListener('touchend', (e) => {
-      if (e.touches.length < 2 && pinch) {
-        pinch = false;
-        map.dragging.disable();
-      }
-    }, { passive: true });
+    el.addEventListener(
+      'touchstart',
+      (e) => {
+        const multi = e.touches.length > 1;
+        if (multi !== pinch) {
+          pinch = multi;
+          multi ? map.dragging.enable() : map.dragging.disable();
+        }
+      },
+      { passive: true }
+    );
+    el.addEventListener(
+      'touchend',
+      (e) => {
+        if (e.touches.length < 2 && pinch) {
+          pinch = false;
+          map.dragging.disable();
+        }
+      },
+      { passive: true }
+    );
   }
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    crossOrigin: true,
-    attribution: '&copy; OpenStreetMap',
-  }).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true, attribution: '&copy; OpenStreetMap' }).addTo(map);
   const home = [trip.plan.stay.lat, trip.plan.stay.lon];
   const pts = [home];
-  L.marker(home, { icon: L.divIcon({ className: 'pin pin-stay', html: '<span>\u2302</span>', iconSize: [28, 28] }), keyboard: false }).addTo(map);
+  L.marker(home, { icon: L.divIcon({ className: 'pin pin-stay', html: `<span>${icon('home')}</span>`, iconSize: [30, 30] }), keyboard: false }).addTo(map);
   let n = 0;
   for (const it of day.items) {
     if (it.type !== 'visit') continue;
@@ -884,73 +1031,56 @@ function drawMap(trip, day) {
     n++;
     const ll = [a.lat, a.lon];
     pts.push(ll);
-    L.marker(ll, { icon: L.divIcon({ className: 'pin', html: `<span>${n}</span>`, iconSize: [28, 28] }), title: a.name })
+    L.marker(ll, { icon: L.divIcon({ className: 'pin', html: `<span>${n}</span>`, iconSize: [30, 30] }), title: a.name })
       .addTo(map)
       .on('click', () => openSheet(trip, a.id, day.date));
   }
-  const color = getComputedStyle(document.documentElement).getPropertyValue('--route').trim();
-  L.polyline(pts, { color, weight: 4, opacity: 0.85, dashArray: '1 9', lineCap: 'round' }).addTo(map);
+  const color = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  L.polyline(pts, { color, weight: 4, opacity: 0.9, dashArray: '1 9', lineCap: 'round' }).addTo(map);
   const fit = () => {
     if (!map) return;
     map.invalidateSize();
-    map.fitBounds(pts, { padding: [36, 36], maxZoom: 16 });
+    map.fitBounds(pts, { padding: [40, 40], maxZoom: 16 });
   };
   fit();
   requestAnimationFrame(() => requestAnimationFrame(fit));
   setTimeout(fit, 300);
 }
 
-async function openSheet(trip, id, date) {
+function showSheet(html, image = null) {
+  sheet.innerHTML = `
+    <div class="sheet-backdrop" data-close></div>
+    <article class="sheet-panel${image ? ' with-img' : ''}" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <span class="grabber" aria-hidden="true"></span>
+      <button class="sheet-close" type="button" data-close aria-label="${t('close')}">${icon('close')}</button>
+      ${image ? `<div class="sheet-hero"><img src="${esc(image)}" alt=""></div>` : ''}
+      <div class="sheet-content">${html}</div>
+    </article>`;
+  sheet.hidden = false;
+  sheet.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheet));
+  sheet.querySelector('.sheet-close').focus({ preventScroll: true });
+}
+
+function openSheet(trip, id, date) {
   const a = info(trip, id);
   if (!a) return;
   const closed = hoursOn(a.hours, date) === null;
   const nav = `https://maps.apple.com/?daddr=${a.lat},${a.lon}&dirflg=w`;
-  sheet.innerHTML = `
-    <div class="sheet-backdrop" data-close></div>
-    <article class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-      <button class="sheet-close" type="button" data-close aria-label="${t('close')}">\u00D7</button>
-      <div class="sheet-img" id="sheet-img"></div>
-      <h2 id="sheet-title">${esc(a.name)}</h2>
-      <p class="sub">${t('c_' + a.category)}, ${a.durationMin} min</p>
-      ${a.desc ? `<p class="desc">${esc(a.desc)}</p>` : ''}
-      <dl class="facts">
-        <div><dt>${t('hours')}</dt><dd>${esc(hoursText(a.hours))}${closed ? `<span class="warn">${t('closed')}</span>` : ''}</dd></div>
-        <div><dt>${t('entry')}</dt><dd>${esc(entryText(a))}</dd></div>
-      </dl>
-      <div class="actions">
-        <a class="btn primary" href="${nav}" target="_blank" rel="noopener">${t('navigate')}</a>
-        ${a.site ? `<a class="btn" href="${esc(a.site)}" target="_blank" rel="noopener">${t('site')}</a>` : ''}
-        ${a.wikipedia ? `<a class="btn" href="${esc(a.wikipedia)}" target="_blank" rel="noopener">${t('wikipedia')}</a>` : ''}
-      </div>
-    </article>`;
-  sheet.hidden = false;
-  sheet.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheet));
-  sheet.querySelector('.sheet-close').focus();
-
-  if (!a.wikipedia) return;
-  try {
-    const u = new URL(a.wikipedia);
-    const title = u.pathname.split('/wiki/')[1];
-    const r = await fetch(`${u.origin}/api/rest_v1/page/summary/${title}`, { signal: AbortSignal.timeout(8000) });
-    const img = (await r.json()).thumbnail?.source;
-    const box = document.getElementById('sheet-img');
-    if (img && box) {
-      box.style.backgroundImage = `url("${img.replace(/"/g, '%22')}")`;
-      box.classList.add('has');
-    }
-  } catch {}
-}
-
-function showSheet(html) {
-  sheet.innerHTML = `
-    <div class="sheet-backdrop" data-close></div>
-    <article class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-      <button class="sheet-close" type="button" data-close aria-label="${t('close')}">\u00D7</button>
-      ${html}
-    </article>`;
-  sheet.hidden = false;
-  sheet.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheet));
-  sheet.querySelector('.sheet-close').focus();
+  showSheet(
+    `<h2 id="sheet-title" class="sheet-title">${esc(a.name)}</h2>
+    <p class="chips-row"><span class="tag">${t('c_' + a.category)}</span><span class="tag">${icon('clock')}${a.durationMin} min</span></p>
+    ${a.desc ? `<p class="desc">${esc(a.desc)}</p>` : ''}
+    <div class="facts">
+      <div class="fact">${icon('clock')}<span><small>${t('hours')}</small>${esc(hoursText(a.hours))}${closed ? `<em class="warn">${t('closed')}</em>` : ''}</span></div>
+      <div class="fact">${icon('ticket')}<span><small>${t('entry')}</small>${esc(entryText(a))}</span></div>
+    </div>
+    <div class="actions">
+      <a class="btn primary" href="${nav}" target="_blank" rel="noopener">${icon('nav')}${t('navigate')}</a>
+      ${a.site ? `<a class="btn" href="${esc(a.site)}" target="_blank" rel="noopener">${icon('globe')}${t('site')}</a>` : ''}
+      ${a.wikipedia ? `<a class="btn" href="${esc(a.wikipedia)}" target="_blank" rel="noopener">${icon('book')}${t('wikipedia')}</a>` : ''}
+    </div>`,
+    a.image ? a.image.replace(/\/\d+px-/, '/960px-') : null
+  );
 }
 
 async function osmRestaurants(lat, lon) {
@@ -966,7 +1096,6 @@ async function osmRestaurants(lat, lon) {
         rating: null,
         cuisine: e.tags.cuisine ? e.tags.cuisine.split(';')[0].replace(/_/g, ' ') : null,
         website: e.tags.website || null,
-        sources: ['osm'],
       }));
     } catch {}
   }
@@ -974,41 +1103,59 @@ async function osmRestaurants(lat, lon) {
 }
 
 async function openRestaurants(trip, lat, lon, place) {
-  const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  const key = `v2:${lat.toFixed(3)},${lon.toFixed(3)}`;
   const head = `<h2 id="sheet-title" class="sheet-top">${esc(t('restNear', { place }))}</h2>`;
   trip.restaurants ||= {};
   let data = trip.restaurants[key];
   if (!data) {
-    showSheet(`${head}<p class="sub">${t('searching')}</p>`);
+    showSheet(`${head}<p class="pending"><span class="spinner"></span>${t('searching')}</p>`);
     try {
-      data = await api('/restaurants', { lat, lon, lang: trip.input.lang, limit: 8 }, 30000);
+      data = await api('/restaurants', { lat, lon, city: { lat: trip.plan.geo.lat, lon: trip.plan.geo.lon }, lang: trip.input.lang }, 40000);
     } catch {
-      data = { restaurants: [], sources: {} };
+      data = { famous: [], top: [] };
     }
-    if (!data.restaurants.length) data = { restaurants: (await osmRestaurants(lat, lon)).slice(0, 8), sources: { osm: 'ok' } };
-    if (data.restaurants.length) {
+    data.famous ||= [];
+    data.top ||= [];
+    if (!data.famous.length && !data.top.length) data = { famous: [], top: [], osm: (await osmRestaurants(lat, lon)).slice(0, 8) };
+    if (data.famous.length || data.top.length || data.osm?.length) {
       trip.restaurants[key] = data;
       saveTrips();
     }
     if (sheet.hidden) return;
   }
+  if (await pageImages(data.famous, 480)) saveTrips();
+  if (sheet.hidden) return;
 
   const nf = new Intl.NumberFormat(locale());
-  const names = { google: 'Google', foursquare: 'Foursquare', osm: 'OpenStreetMap' };
-  const used = [...new Set(data.restaurants.flatMap((r) => r.sources || []))].map((x) => names[x] || x).join(', ');
-  const rows = data.restaurants.map((r) => {
-    const meta = [
-      r.rating ? `\u2605 ${r.rating.toFixed(1)}${r.ratingCount ? ` (${nf.format(r.ratingCount)})` : ''}` : null,
-      r.price ? t('price' + r.price) : null,
-      r.cuisine,
-      r.distance != null ? `${nf.format(r.distance)}\u00A0m` : null,
-    ].filter(Boolean);
-    const href = r.mapsUrl || `https://maps.apple.com/?daddr=${r.lat},${r.lon}&dirflg=w`;
-    return `<li><a href="${esc(href)}" target="_blank" rel="noopener"><strong>${esc(r.name)}</strong><span class="sub">${esc(meta.join(', '))}</span></a></li>`;
-  });
-  showSheet(
-    `${head}${rows.length ? `<ul class="rlist">${rows.join('')}</ul><p class="fine">${t('restSources', { s: used })}</p>` : `<p class="sub">${t('noRest')}</p>`}`
-  );
+  const rating = (r) => (r.rating ? `<span class="rating">${icon('star', 'fill')}${r.rating.toFixed(1)}${r.ratingCount ? `<small>(${nf.format(r.ratingCount)})</small>` : ''}</span>` : '');
+  const distTxt = (r) => {
+    if (r.distance == null && r.lat != null) r.distance = Math.round(dist({ lat, lon }, r) * 1000);
+    return r.distance != null ? fmtKm(r.distance / 1000) : '';
+  };
+  const href = (r) => esc(r.mapsUrl || `https://maps.apple.com/?daddr=${r.lat},${r.lon}&dirflg=w`);
+  const famous = data.famous.length
+    ? `<h3 class="rhead">${esc(t('famousIn', { city: trip.plan.city }))}</h3><div class="slides famous">${data.famous
+        .map(
+          (r) =>
+            `<a class="slide" href="${href(r)}" target="_blank" rel="noopener"><span class="slide-img">${
+              r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy">` : `<span class="ph">${icon('food')}</span>`
+            }</span><span class="slide-body"><strong>${esc(r.name)}</strong><span class="meta">${rating(r)}<small>${distTxt(r)}</small></span>${r.why ? `<small class="why">${esc(r.why)}</small>` : ''}</span></a>`
+        )
+        .join('')}</div>`
+    : '';
+  const rows = (title, list) =>
+    list?.length
+      ? `<h3 class="rhead">${esc(title)}</h3><ul class="rlist">${list
+          .map(
+            (r) =>
+              `<li><a href="${href(r)}" target="_blank" rel="noopener"><span class="tile-ic">${icon('food')}</span><span class="r-txt"><strong>${esc(r.name)}</strong><small>${esc(
+                [r.price ? t('price' + r.price) : null, r.cuisine, distTxt(r)].filter(Boolean).join(', ')
+              )}</small></span>${rating(r)}</a></li>`
+          )
+          .join('')}</ul>`
+      : '';
+  const body = famous + rows(t('topNear'), data.top) + rows(t('inArea'), data.osm);
+  showSheet(`${head}${body || `<p class="sub">${t('noRest')}</p>`}`);
 }
 
 function closeSheet() {
@@ -1018,17 +1165,20 @@ function closeSheet() {
 
 function renderSettings() {
   app.innerHTML = `
-    <header class="bar"><a class="link-btn" href="#/">${t('back')}</a></header>
-    <h1 class="page-title">${t('settings')}</h1>
+    ${pageHead(t('settings'))}
     <form id="s" novalidate>
-      <div class="field"><label for="token">${t('token')}</label><input id="token" type="password" autocomplete="off" value="${esc(settings.token)}"></div>
-      <div class="field"><label for="lang">${t('language')}</label><select id="lang"><option value="ro"${settings.lang === 'ro' ? ' selected' : ''}>Romana</option><option value="en"${
-        settings.lang === 'en' ? ' selected' : ''
-      }>English</option></select></div>
-      <div class="field"><label for="peron">${t('peron')}</label><input id="peron" type="url" autocomplete="off" placeholder="https://acidburn11.github.io/peron/" value="${esc(settings.peron)}"><p class="hint">${t('peronHint')}</p></div>
-      <div class="field"><label for="api">${t('api')}</label><input id="api" type="url" autocomplete="off" value="${esc(settings.api)}"></div>
+      <div class="card form-card">
+        <div class="field"><label for="token">${t('token')}</label><input id="token" type="password" autocomplete="off" value="${esc(settings.token)}"></div>
+        <div class="field last"><label for="lang">${t('language')}</label><select id="lang"><option value="ro"${settings.lang === 'ro' ? ' selected' : ''}>Romana</option><option value="en"${
+          settings.lang === 'en' ? ' selected' : ''
+        }>English</option></select></div>
+      </div>
+      <div class="card form-card">
+        <div class="field"><label for="peron">${t('peron')}</label><input id="peron" type="url" autocomplete="off" placeholder="https://acidburn11.github.io/peron/" value="${esc(settings.peron)}"><p class="hint">${t('peronHint')}</p></div>
+        <div class="field last"><label for="api">${t('api')}</label><input id="api" type="url" autocomplete="off" value="${esc(settings.api)}"></div>
+      </div>
       <p class="ok" id="msg" role="status"></p>
-      <div class="cta"><button class="btn primary" type="submit">${t('save')}</button></div>
+      <div class="cta"><button class="btn primary pill" type="submit">${t('save')}</button></div>
     </form>`;
   const f = document.getElementById('s');
   f.addEventListener('submit', (e) => {
@@ -1049,6 +1199,7 @@ document.addEventListener('keydown', (e) => {
 });
 for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
 window.addEventListener('hashchange', route);
+window.addEventListener('scroll', onScroll, { passive: true });
 document.documentElement.lang = settings.lang;
 route();
 

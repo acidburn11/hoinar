@@ -124,7 +124,7 @@ input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; dis
 .days button[aria-selected=true] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .days button[aria-selected=true] .wx { color: inherit; opacity: .8; }
 
-.map { height: 38vh; min-height: 220px; max-height: 420px; margin: 14px -20px 0; background: var(--line); }
+.map { height: 32vh; min-height: 200px; max-height: 360px; margin: 14px -20px 0; background: var(--line); }
 .leaflet-container { font: inherit; background: var(--line); }
 .pin span {
   display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
@@ -202,5 +202,4 @@ details.tips li { margin: 0 0 8px; }
 .rlist .sub { display: block; color: var(--muted); font-size: 14px; }
 .fine { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
 body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--bg); z-index: 900; }
-html { touch-action: pan-x pan-y; }
 .map, .map.leaflet-container { touch-action: pan-y; }

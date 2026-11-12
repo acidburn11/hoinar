@@ -666,6 +666,7 @@ function renderSettings() {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !sheet.hidden) closeSheet();
 });
+for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
 window.addEventListener('hashchange', route);
 document.documentElement.lang = settings.lang;
 route();

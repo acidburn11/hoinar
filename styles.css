@@ -192,7 +192,9 @@ input[type=date] { -webkit-appearance: none; appearance: none; min-width: 0; dis
 
 .day-title { font-size: 26px; font-weight: 800; letter-spacing: -.025em; line-height: 1.15; margin: 14px 0 6px; }
 .wxline { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); margin: 0 0 16px; font-size: 15px; }
-.wxline span { display: inline-flex; align-items: center; gap: 5px; }
+.wxline span, .wxline .wx-steps { display: inline-flex; align-items: center; gap: 5px; }
+.wx-steps { border: 0; background: none; padding: 0; font: inherit; color: var(--muted); cursor: pointer; }
+.wx-steps .ic.sm { width: 13px; height: 13px; margin-left: 2px; opacity: .6; }
 .wxline .ic { width: 17px; height: 17px; }
 
 .now { display: flex; gap: 14px; padding: 14px; margin: 0 0 18px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); border: 2px solid var(--accent); }
@@ -392,3 +394,28 @@ input[type=date] { padding: 10px; font-size: 16px; }
 .fact .conv { flex-direction: row; align-items: center; }
 .fact .conv strong { font-size: 17px; }
 .backup label.btn { margin: 0; font-weight: 650; font-size: 15px; }
+.steps-tile { margin: 18px 0; }
+.steps-tile .tile-ic { background: var(--accent); color: var(--on-accent); }
+
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 4px 0 18px; }
+.stat-card {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px 12px; border-radius: 16px; background: var(--surface);
+  box-shadow: var(--shadow); border: 0; text-align: left; cursor: default; color: var(--ink);
+}
+button.stat-card { cursor: pointer; }
+.stat-card small { color: var(--muted); font-size: 12px; }
+.stat-card strong { font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+
+.chart {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: end; gap: 6px;
+  height: 120px; padding: 14px 12px 10px; margin: 0 0 24px;
+}
+.chart .bar { appearance: none; border: 0; padding: 0; height: var(--h); min-height: 3px; border-radius: 5px; background: var(--surface-2); cursor: pointer; }
+.chart .bar.today { background: var(--accent); }
+
+.rhead { display: flex; align-items: baseline; justify-content: space-between; }
+.rhead .gsum { font-size: 14px; font-weight: 650; color: var(--muted); }
+.steps-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; }
+.steps-list .stop-body { padding: 10px 4px; }
+.steps-list .svalue { font-weight: 750; font-size: 16px; }
+.steps-list .ic.sm { width: 14px; height: 14px; color: var(--muted); }

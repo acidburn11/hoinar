@@ -33,6 +33,9 @@ const STR = {
     c_museum: 'Muzeu', c_castle: 'Castel', c_palace: 'Palat', c_gallery: 'Galerie', c_zoo: 'Gradina zoologica',
     c_aquarium: 'Acvariu', c_theme_park: 'Parc de distractii', c_viewpoint: 'Punct de belvedere', c_attraction: 'Atractie',
     c_historic: 'Obiectiv istoric', c_park: 'Parc', c_church: 'Biserica', c_monument: 'Monument',
+    dayN: 'Ziua {n}', dinner: 'Cina', lunchHint: 'Vezi restaurante in apropiere', nearStay: 'Restaurante langa cazare', restNear: 'Restaurante langa {place}',
+    searching: 'Caut restaurante...', noRest: 'Nu am gasit restaurante in zona.', restSources: 'Surse: {s}',
+    price1: 'ieftin', price2: 'pret mediu', price3: 'scump', price4: 'foarte scump',
   },
   en: {
     tagline: 'Sights, a day-by-day plan and a map for any city.',
@@ -60,6 +63,9 @@ const STR = {
     c_museum: 'Museum', c_castle: 'Castle', c_palace: 'Palace', c_gallery: 'Gallery', c_zoo: 'Zoo',
     c_aquarium: 'Aquarium', c_theme_park: 'Theme park', c_viewpoint: 'Viewpoint', c_attraction: 'Attraction',
     c_historic: 'Historic site', c_park: 'Park', c_church: 'Church', c_monument: 'Monument',
+    dayN: 'Day {n}', dinner: 'Dinner', lunchHint: 'See nearby restaurants', nearStay: 'Restaurants near your stay', restNear: 'Restaurants near {place}',
+    searching: 'Finding restaurants...', noRest: 'No restaurants found nearby.', restSources: 'Sources: {s}',
+    price1: 'cheap', price2: 'mid-range', price3: 'pricey', price4: 'very pricey',
   },
 };
 
@@ -159,23 +165,36 @@ async function fetchOsm(plan) {
 
 async function createTrip(input) {
   const plan = await api('/plan', { ...input, lang: settings.lang }, 90000);
-  const trip = { id: crypto.randomUUID(), created: Date.now(), input: { ...input, lang: settings.lang }, plan, ai: null, osm: null };
+  const trip = { id: crypto.randomUUID(), created: Date.now(), input: { ...input, lang: settings.lang }, plan, aiByLang: {}, osm: null };
   trips[trip.id] = trip;
   saveTrips();
   state.day = 0;
   location.hash = `#/trip/${trip.id}`;
 }
 
+function aiFor(trip) {
+  trip.aiByLang ||= {};
+  if (trip.ai) {
+    trip.aiByLang[trip.input.lang] ||= trip.ai;
+    delete trip.ai;
+  }
+  return trip.aiByLang[settings.lang] || null;
+}
+
 const enriching = new Set();
 function enrich(trip) {
-  if (enriching.has(trip.id)) return;
-  enriching.add(trip.id);
+  const lang = settings.lang;
+  const key = `${trip.id}:${lang}`;
+  if (enriching.has(key)) return;
+  enriching.add(key);
   const p = trip.plan;
+  const ai = aiFor(trip);
   const jobs = [];
-  if (!trip.ai) {
+  if (!ai || !ai.names) {
+    const attractions = lang === trip.input.lang ? p.attractions : p.attractions.map((a) => ({ ...a, description: '' }));
     jobs.push(
-      api('/enhance', { city: `${p.city}, ${p.country}`, days: p.days, attractions: p.attractions, lang: trip.input.lang }, 90000)
-        .then((ai) => (trip.ai = ai))
+      api('/enhance', { city: `${p.city}, ${p.country}`, days: p.days, attractions, lang }, 90000)
+        .then((res) => (trip.aiByLang[lang] = res))
         .catch(() => {})
     );
   }
@@ -183,20 +202,22 @@ function enrich(trip) {
   for (const j of jobs) {
     j.then(() => {
       saveTrips();
-      if (state.tripId === trip.id && location.hash === `#/trip/${trip.id}`) renderTrip(trip, true);
+      if (state.tripId === trip.id && location.hash === `#/trip/${trip.id}` && settings.lang === lang) renderTrip(trip, true);
     });
   }
-  Promise.allSettled(jobs).then(() => enriching.delete(trip.id));
+  Promise.allSettled(jobs).then(() => enriching.delete(key));
 }
 
 function info(trip, id) {
   const a = trip.plan.attractions.find((x) => x.id === id);
   if (!a) return null;
   const tags = trip.osm?.[id] || {};
+  const ai = aiFor(trip);
   return {
     ...a,
+    name: ai?.names?.[id] || a.name,
     tags,
-    desc: a.description || trip.ai?.descriptions?.[id] || '',
+    desc: (settings.lang === trip.input.lang ? a.description : '') || ai?.descriptions?.[id] || a.description || '',
     hours: tags.opening_hours || a.openingHours || null,
     site: tags.website || tags['contact:website'] || a.ticket?.officialUrl || null,
   };
@@ -351,22 +372,29 @@ function renderTrip(trip, keepScroll = false) {
   const p = trip.plan;
   if (state.day >= p.days.length) state.day = 0;
   const day = p.days[state.day];
-  const title = trip.ai?.dayTitles?.[day.date] || day.title;
+  const ai = aiFor(trip);
+  const title = ai?.dayTitles?.[day.date] || (settings.lang === trip.input.lang ? day.title : t('dayN', { n: state.day + 1 }));
   const w = day.weather;
   const stayName = trip.input.stay ? p.stay.label.split(',').slice(0, 2).join(',') : t('cityCenter');
 
   let n = 0;
+  let last = { lat: p.stay.lat, lon: p.stay.lon, name: t('stayLabel') };
   const rows = [
     `<li class="start"><span></span><span class="rail"><span class="dot">\u2302</span></span><div class="stop-body"><strong>${t('stayLabel')}</strong><span class="sub">${esc(stayName)}</span></div></li>`,
   ];
   for (const it of day.items) {
-    if (it.type === 'lunch') {
-      rows.push(`<li class="lunch"><time>${it.time}</time><span class="rail"><span class="dot"></span></span><div class="stop-body"><strong>${t('lunch')}</strong></div></li>`);
+    if (it.type === 'lunch' || it.type === 'dinner') {
+      rows.push(
+        `<li class="lunch"><time>${it.time}</time><span class="rail"><span class="dot"></span></span><button class="stop-body" type="button" data-near="${last.lat},${last.lon}" data-place="${esc(
+          last.name
+        )}"><strong>${t(it.type)}</strong><span class="sub link">${t('lunchHint')}</span></button></li>`
+      );
       continue;
     }
     const a = info(trip, it.attractionId);
     if (!a) continue;
     n++;
+    last = { lat: a.lat, lon: a.lon, name: a.name };
     const closed = hoursOn(a.hours, day.date) === null;
     rows.push(
       `<li class="leg ${it.travelMode}"><span></span><span class="rail"></span><span class="note">${t(it.travelMode === 'walk' ? 'walk' : 'transit', { n: it.travelMin })}</span></li>`,
@@ -377,13 +405,13 @@ function renderTrip(trip, keepScroll = false) {
   }
 
   const extras = p.extras.map((id) => info(trip, id)).filter(Boolean);
-  const tips = trip.ai?.tips || [];
+  const tips = ai?.tips || [];
 
   app.innerHTML = `
     <header class="bar"><a class="link-btn" href="#/">${t('back')}</a><button class="link-btn danger" id="del" type="button">${t('delete')}</button></header>
     <h1 class="city">${esc(p.city)}</h1>
     <p class="meta">${fmtRange(trip.input.start, trip.input.end)}, ${esc(p.country)}</p>
-    ${trip.ai?.summary ? `<p class="summary">${esc(trip.ai.summary)}</p>` : trip.ai ? '' : `<p class="pending">${t('aiPending')}</p>`}
+    ${ai?.summary ? `<p class="summary">${esc(ai.summary)}</p>` : ai ? '' : `<p class="pending">${t('aiPending')}</p>`}
     <nav class="days" role="tablist">${p.days
       .map(
         (d, i) =>
@@ -401,6 +429,7 @@ function renderTrip(trip, keepScroll = false) {
           : ''
       }
       <ol class="route">${rows.join('')}</ol>
+      <button class="btn wide" type="button" data-near="${p.stay.lat},${p.stay.lon}" data-place="${esc(t('stayLabel').toLowerCase())}">${t('nearStay')}</button>
     </section>
     ${
       extras.length
@@ -418,6 +447,12 @@ function renderTrip(trip, keepScroll = false) {
     })
   );
   app.querySelectorAll('[data-id]').forEach((b) => b.addEventListener('click', () => openSheet(trip, b.dataset.id, day.date)));
+  app.querySelectorAll('[data-near]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const [lat, lon] = b.dataset.near.split(',').map(Number);
+      openRestaurants(trip, lat, lon, b.dataset.place);
+    })
+  );
   document.getElementById('del').addEventListener('click', () => {
     if (!confirm(t('confirmDelete', { city: p.city }))) return;
     delete trips[trip.id];
@@ -436,7 +471,24 @@ function drawMap(trip, day) {
   }
   const el = document.getElementById('map');
   if (!el || !window.L) return;
-  map = L.map(el, { zoomControl: false, attributionControl: true });
+  const touch = matchMedia('(pointer: coarse)').matches;
+  map = L.map(el, { zoomControl: false, attributionControl: true, dragging: !touch, tap: false, touchZoom: true, scrollWheelZoom: !touch });
+  if (touch) {
+    let pinch = false;
+    el.addEventListener('touchstart', (e) => {
+      const multi = e.touches.length > 1;
+      if (multi !== pinch) {
+        pinch = multi;
+        multi ? map.dragging.enable() : map.dragging.disable();
+      }
+    }, { passive: true });
+    el.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2 && pinch) {
+        pinch = false;
+        map.dragging.disable();
+      }
+    }, { passive: true });
+  }
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     crossOrigin: true,
@@ -459,7 +511,14 @@ function drawMap(trip, day) {
   }
   const color = getComputedStyle(document.documentElement).getPropertyValue('--route').trim();
   L.polyline(pts, { color, weight: 4, opacity: 0.85, dashArray: '1 9', lineCap: 'round' }).addTo(map);
-  map.fitBounds(pts, { padding: [36, 36], maxZoom: 16 });
+  const fit = () => {
+    if (!map) return;
+    map.invalidateSize();
+    map.fitBounds(pts, { padding: [36, 36], maxZoom: 16 });
+  };
+  fit();
+  requestAnimationFrame(() => requestAnimationFrame(fit));
+  setTimeout(fit, 300);
 }
 
 async function openSheet(trip, id, date) {
@@ -501,6 +560,76 @@ async function openSheet(trip, id, date) {
       box.classList.add('has');
     }
   } catch {}
+}
+
+function showSheet(html) {
+  sheet.innerHTML = `
+    <div class="sheet-backdrop" data-close></div>
+    <article class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <button class="sheet-close" type="button" data-close aria-label="${t('close')}">\u00D7</button>
+      ${html}
+    </article>`;
+  sheet.hidden = false;
+  sheet.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheet));
+  sheet.querySelector('.sheet-close').focus();
+}
+
+async function osmRestaurants(lat, lon) {
+  const q = `[out:json][timeout:15];nwr(around:600,${lat},${lon})["amenity"="restaurant"]["name"];out center tags 30;`;
+  for (const host of OVERPASS) {
+    try {
+      const r = await fetch(`${host}?data=${encodeURIComponent(q)}`, { signal: AbortSignal.timeout(20000) });
+      if (!r.ok) continue;
+      return ((await r.json()).elements || []).map((e) => ({
+        name: e.tags.name,
+        lat: e.lat ?? e.center?.lat,
+        lon: e.lon ?? e.center?.lon,
+        rating: null,
+        cuisine: e.tags.cuisine ? e.tags.cuisine.split(';')[0].replace(/_/g, ' ') : null,
+        website: e.tags.website || null,
+        sources: ['osm'],
+      }));
+    } catch {}
+  }
+  return [];
+}
+
+async function openRestaurants(trip, lat, lon, place) {
+  const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  const head = `<h2 id="sheet-title" class="sheet-top">${esc(t('restNear', { place }))}</h2>`;
+  trip.restaurants ||= {};
+  let data = trip.restaurants[key];
+  if (!data) {
+    showSheet(`${head}<p class="sub">${t('searching')}</p>`);
+    try {
+      data = await api('/restaurants', { lat, lon, lang: trip.input.lang, limit: 8 }, 30000);
+    } catch {
+      data = { restaurants: [], sources: {} };
+    }
+    if (!data.restaurants.length) data = { restaurants: (await osmRestaurants(lat, lon)).slice(0, 8), sources: { osm: 'ok' } };
+    if (data.restaurants.length) {
+      trip.restaurants[key] = data;
+      saveTrips();
+    }
+    if (sheet.hidden) return;
+  }
+
+  const nf = new Intl.NumberFormat(locale());
+  const names = { google: 'Google', foursquare: 'Foursquare', osm: 'OpenStreetMap' };
+  const used = [...new Set(data.restaurants.flatMap((r) => r.sources || []))].map((x) => names[x] || x).join(', ');
+  const rows = data.restaurants.map((r) => {
+    const meta = [
+      r.rating ? `\u2605 ${r.rating.toFixed(1)}${r.ratingCount ? ` (${nf.format(r.ratingCount)})` : ''}` : null,
+      r.price ? t('price' + r.price) : null,
+      r.cuisine,
+      r.distance != null ? `${nf.format(r.distance)}\u00A0m` : null,
+    ].filter(Boolean);
+    const href = r.mapsUrl || `https://maps.apple.com/?daddr=${r.lat},${r.lon}&dirflg=w`;
+    return `<li><a href="${esc(href)}" target="_blank" rel="noopener"><strong>${esc(r.name)}</strong><span class="sub">${esc(meta.join(', '))}</span></a></li>`;
+  });
+  showSheet(
+    `${head}${rows.length ? `<ul class="rlist">${rows.join('')}</ul><p class="fine">${t('restSources', { s: used })}</p>` : `<p class="sub">${t('noRest')}</p>`}`
+  );
 }
 
 function closeSheet() {

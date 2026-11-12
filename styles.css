@@ -39,7 +39,7 @@ body {
   font-variant-numeric: tabular-nums;
   padding-top: env(safe-area-inset-top);
 }
-#app { max-width: 640px; margin: 0 auto; padding: 0 20px 140px; }
+#app { max-width: 640px; margin: 0 auto; padding: 0 20px 140px; overflow-x: clip; }
 a { color: var(--route); }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--route); outline-offset: 2px; border-radius: 6px; }
@@ -193,3 +193,14 @@ details.tips li { margin: 0 0 8px; }
 .facts dd { margin: 2px 0 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .actions .btn { flex: 1 1 140px; }
+.sub.link { color: var(--route); }
+.btn.wide { width: 100%; margin-top: 18px; }
+.sheet-panel .sheet-top { font-size: 22px; padding-top: 8px; }
+.rlist { list-style: none; margin: 14px 0 0; padding: 0; }
+.rlist a { display: block; padding: 12px 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.rlist strong { display: block; font-size: 17px; line-height: 1.3; }
+.rlist .sub { display: block; color: var(--muted); font-size: 14px; }
+.fine { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--bg); z-index: 900; }
+html { touch-action: pan-x pan-y; }
+.map, .map.leaflet-container { touch-action: pan-y; }

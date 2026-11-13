@@ -56,6 +56,9 @@ const STR = {
     famousIn: 'Celebre in {city}', topNear: 'Cele mai apreciate in zona', inArea: 'In zona',
     searching: 'Caut restaurante...', noRest: 'Nu am gasit restaurante in zona.', restSources: 'Surse: {s}',
     price1: 'ieftin', price2: 'pret mediu', price3: 'scump', price4: 'foarte scump',
+    wxTitle: 'Vremea', wxUpdated: 'Actualizat acum {m} min', wxUpdating: 'Actualizez...', wxHourly: 'Pe ore', wxWind: 'vant {n} km/h',
+    wxRainMm: '{n} mm', wxTip: 'Sfat', wxTipUmbrella: 'Ia umbrela, sunt sanse mari de ploaie.', wxTipCold: 'Dimineata e frig, imbraca-te gros.',
+    wxTipHot: 'Va fi foarte cald, ia apa si crema solara.', wxTipWind: 'Vant puternic, evita punctele de belvedere expuse.',
   },
   en: {
     tagline: 'Sights, a day-by-day plan and a map for any city.',
@@ -106,6 +109,9 @@ const STR = {
     famousIn: 'Famous in {city}', topNear: 'Top rated nearby', inArea: 'Nearby',
     searching: 'Finding restaurants...', noRest: 'No restaurants found nearby.', restSources: 'Sources: {s}',
     price1: 'cheap', price2: 'mid-range', price3: 'pricey', price4: 'very pricey',
+    wxTitle: 'Weather', wxUpdated: 'Updated {m} min ago', wxUpdating: 'Updating...', wxHourly: 'Hourly', wxWind: 'wind {n} km/h',
+    wxRainMm: '{n} mm', wxTip: 'Tip', wxTipUmbrella: 'Bring an umbrella, high chance of rain.', wxTipCold: 'Cold morning, dress warmly.',
+    wxTipHot: 'It will be very hot, bring water and sunscreen.', wxTipWind: 'Strong wind, avoid exposed viewpoints.',
   },
 };
 
@@ -791,6 +797,113 @@ function curName(c) {
   return c.currencyName || c.currency;
 }
 
+function wxTileSummary(trip) {
+  const p = trip.plan;
+  const days = p.days;
+  if (!days.length) return '';
+  const minT = Math.min(...days.filter((d) => d.weather).map((d) => d.weather.tmin));
+  const maxT = Math.max(...days.filter((d) => d.weather).map((d) => d.weather.tmax));
+  const maxRain = Math.max(...days.filter((d) => d.weather).map((d) => d.weather.rainProb));
+  if (!Number.isFinite(minT)) return '';
+  const parts = [`${Math.round(minT)}\u2013${Math.round(maxT)}\u00B0C`];
+  if (maxRain > 40) parts.push(`${t('rain', { n: maxRain })}`);
+  return parts.join(', ');
+}
+
+function wxDesc(code) {
+  const map = { 0: 'senin', 1: 'partial senin', 2: 'partial innorat', 3: 'innorat', 45: 'ceata', 48: 'ceata', 51: 'burinta', 53: 'burinta', 55: 'burinta',
+    61: 'ploaie usoara', 63: 'ploaie', 65: 'ploaie puternica', 71: 'ninsoare usoara', 73: 'ninsoare', 75: 'ninsoare puternica', 80: 'averse', 81: 'averse', 82: 'averse puternice',
+    95: 'furtuna', 96: 'furtuna cu grindina', 99: 'furtuna cu grindina' };
+  const mapEn = { 0: 'clear', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast', 45: 'fog', 48: 'fog', 51: 'drizzle', 53: 'drizzle', 55: 'drizzle',
+    61: 'light rain', 63: 'rain', 65: 'heavy rain', 71: 'light snow', 73: 'snow', 75: 'heavy snow', 80: 'showers', 81: 'showers', 82: 'heavy showers',
+    95: 'thunderstorm', 96: 'hail storm', 99: 'hail storm' };
+  return (settings.lang === 'ro' ? map : mapEn)[code] || (settings.lang === 'ro' ? map : mapEn)[Math.floor(code / 10) * 10] || '';
+}
+
+async function openWeather(trip) {
+  const p = trip.plan;
+  const head = `<h2 id="sheet-title" class="sheet-top">${esc(t('wxTitle'))}</h2>`;
+  const cached = trip._wx;
+  const stale = !cached || (Date.now() - cached.fetched > 3 * 3600_000);
+
+  if (stale) {
+    showSheet(`${head}<p class="pending"><span class="spinner"></span>${t('wxUpdating')}</p>`);
+    try {
+      const geo = p.geo || p.attractions[0];
+      const wx = await api('/weather', { lat: geo.lat, lon: geo.lon, start: trip.input.start, end: trip.input.end }, 15000);
+      trip._wx = wx;
+      saveTrips();
+    } catch {
+      if (!cached) { showSheet(`${head}<p>${t('errNetwork')}</p>`); return; }
+    }
+  }
+
+  const wx = trip._wx;
+  if (!wx) return;
+
+  const mins = Math.round((Date.now() - wx.fetched) / 60000);
+  const todayStr = today();
+
+  let html = `${head}<p class="wx-meta">${t('wxUpdated', { m: mins })}</p>`;
+
+  const tips = [];
+  const maxRain = Math.max(...wx.days.map((d) => d.rainProb));
+  const minMorning = Math.min(...wx.days.map((d) => d.tmin));
+  const maxDay = Math.max(...wx.days.map((d) => d.tmax));
+  const maxWind = Math.max(...wx.days.map((d) => d.windMax));
+  if (maxRain >= 60) tips.push(t('wxTipUmbrella'));
+  if (minMorning <= 5) tips.push(t('wxTipCold'));
+  if (maxDay >= 33) tips.push(t('wxTipHot'));
+  if (maxWind >= 40) tips.push(t('wxTipWind'));
+  if (tips.length) html += `<div class="wx-tips">${tips.map((x) => `<p>${icon('info')}${esc(x)}</p>`).join('')}</div>`;
+
+  html += '<div class="wx-grid">';
+  for (const d of wx.days) {
+    const isToday = d.date === todayStr;
+    const dayLabel = isToday ? (settings.lang === 'ro' ? 'Azi' : 'Today') : fmt(d.date, { weekday: 'short', day: 'numeric' });
+    const rainClass = d.rainProb >= 60 ? ' wx-rain' : d.rainProb >= 30 ? ' wx-drizzle' : '';
+    html += `<button class="wx-day card${rainClass}${isToday ? ' wx-today' : ''}" type="button" data-wxday="${d.date}">
+      <small class="wx-label">${esc(dayLabel)}</small>
+      <span class="wx-icon">${wxIcon(d.code)}</span>
+      <strong>${Math.round(d.tmax)}\u00B0</strong><small>${Math.round(d.tmin)}\u00B0</small>
+      ${d.rainProb > 0 ? `<small class="wx-precip">${icon('drop')}${d.rainProb}%</small>` : ''}
+    </button>`;
+  }
+  html += '</div>';
+
+  showSheet(html);
+
+  sheet.querySelectorAll('[data-wxday]').forEach((b) => b.addEventListener('click', () => {
+    const date = b.dataset.wxday;
+    const hours = wx.hourly[date];
+    if (!hours) return;
+    const d = wx.days.find((x) => x.date === date);
+    const label = date === todayStr ? (settings.lang === 'ro' ? 'Azi' : 'Today') : fmt(date, { weekday: 'long', day: 'numeric', month: 'long' });
+
+    let hHtml = `<h2 id="sheet-title" class="sheet-top">${esc(label)}</h2>`;
+    if (d) {
+      hHtml += `<p class="wx-summary">${wxIcon(d.code)}<strong>${Math.round(d.tmin)}\u2013${Math.round(d.tmax)}\u00B0C</strong> ${esc(wxDesc(d.code))}`;
+      if (d.rainMm > 0) hHtml += ` \u2022 ${t('wxRainMm', { n: d.rainMm.toFixed(1) })}`;
+      if (d.windMax > 20) hHtml += ` \u2022 ${t('wxWind', { n: Math.round(d.windMax) })}`;
+      hHtml += `</p>`;
+      if (d.sunrise && d.sunset) hHtml += `<p class="wx-sun">${icon('sun')}${d.sunrise} \u2013 ${icon('sunset')}${d.sunset}</p>`;
+    }
+
+    hHtml += '<div class="wx-hours">';
+    for (const hr of hours) {
+      const rainCls = hr.rain >= 60 ? ' wx-rain' : hr.rain >= 30 ? ' wx-drizzle' : '';
+      hHtml += `<div class="wx-hour${rainCls}">
+        <small>${String(hr.h).padStart(2, '0')}:00</small>
+        ${wxIcon(hr.code)}
+        <strong>${Math.round(hr.t)}\u00B0</strong>
+        ${hr.rain > 0 ? `<small class="wx-precip">${icon('drop')}${hr.rain}%</small>` : ''}
+      </div>`;
+    }
+    hHtml += '</div>';
+    showSheet(hHtml);
+  }));
+}
+
 async function openCountry(trip) {
   const p = trip.plan;
   const head = `<h2 id="sheet-title" class="sheet-top">${esc(t('countryInfo', { country: p.country }))}</h2>`;
@@ -1110,6 +1223,7 @@ function renderTrip(trip, keepScroll = false) {
       <button class="tile" type="button" data-near="${p.stay.lat},${p.stay.lon}" data-place="${esc(t('stayLabel').toLowerCase())}"><span class="tile-ic">${icon('food')}</span><span><strong>${t(
         'nearStay'
       )}</strong><small>${t('nearStayHint')}</small></span>${icon('chev', 'go')}</button>
+      <button class="tile" type="button" id="wx-tile"><span class="tile-ic wx-tile-ic">${icon('cloud')}</span><span><strong>${t('wxTitle')}</strong><small>${wxTileSummary(trip)}</small></span>${icon('chev', 'go')}</button>
       <button class="tile" type="button" id="country"><span class="tile-ic">${icon('info')}</span><span><strong>${esc(t('countryInfo', { country: p.country }))}</strong><small>${t(
         'countryHint'
       )}</small></span>${icon('chev', 'go')}</button>
@@ -1146,6 +1260,7 @@ function renderTrip(trip, keepScroll = false) {
     renderTrip(trip, true);
   });
   document.getElementById('more').addEventListener('click', () => moreMenu(trip));
+  document.getElementById('wx-tile').addEventListener('click', () => openWeather(trip));
   document.getElementById('country').addEventListener('click', () => openCountry(trip));
   app.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => removeFromDay(trip, state.day, b.dataset.remove)));
   app.querySelectorAll('[data-move]').forEach((sel) =>

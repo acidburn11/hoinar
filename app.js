@@ -3,7 +3,6 @@
 const DEFAULT_API = 'https://hoinar-api.acidburn11.workers.dev';
 const K_TRIPS = 'hoinar.trips';
 const K_SETTINGS = 'hoinar.settings';
-const K_STEPS = 'hoinar.steps';
 const INTERESTS = ['istorie', 'arhitectura', 'arta', 'natura', 'religie', 'familie'];
 const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
 
@@ -37,10 +36,6 @@ const STR = {
     theme: 'Tema', themeAuto: 'Automata', themeLight: 'Luminoasa', themeDark: 'Intunecata',
     backup: 'Backup', exportBtn: 'Exporta calatoriile', importBtn: 'Importa din fisier', backupHint: 'Fisierul contine calatoriile si setarile, fara cheia de acces.',
     imported: 'Am importat {n} calatorii.', importErr: 'Fisierul nu e un backup Hoinar valid.',
-    steps: '~{n} pasi, {km} pe jos', stepsReal: '{n} pasi, {km} pe jos', stepsPrompt: 'Cati pasi ai facut azi (din Health sau Pedometer++)?',
-    stepsSaved: 'Am salvat {n} pasi pentru {d}.',
-    myStepsTitle: 'Pasii mei', myStepsHint: 'Vezi tot ce ai mers, pe zi, luna si an', today2: 'Azi', thisMonth: 'Luna asta', thisYear: 'Anul asta',
-    addToday: 'Adauga pasii de azi', stepsEmpty: 'Niciun pas inregistrat inca.', stepsEmptyHint: 'Automatizarea din Shortcuts trimite pasii aici in fiecare seara, sau ii adaugi tu oricand.',
     countryInfo: 'Info utile: {country}', countryHint: 'Urgente, bani, priza, fraze', emergency: 'Urgente', call: 'Suna la {n}',
     embassy: 'Ambasada Romaniei', embassyHint: 'Vezi pe harta', money: 'Bani', rate: '1 {cur} = {ron} lei', convert: 'Convertor',
     localTime: 'Ora locala', sameTime: 'Aceeasi ora ca in Romania', timeDiff: '{h} h fata de Romania', plugs: 'Priza',
@@ -91,10 +86,6 @@ const STR = {
     theme: 'Theme', themeAuto: 'Automatic', themeLight: 'Light', themeDark: 'Dark',
     backup: 'Backup', exportBtn: 'Export trips', importBtn: 'Import from file', backupHint: 'The file contains your trips and settings, without the access key.',
     imported: 'Imported {n} trips.', importErr: 'This file isn\u2019t a valid Hoinar backup.',
-    steps: '~{n} steps, {km} on foot', stepsReal: '{n} steps, {km} on foot', stepsPrompt: 'How many steps did you take today (from Health or Pedometer++)?',
-    stepsSaved: 'Saved {n} steps for {d}.',
-    myStepsTitle: 'My steps', myStepsHint: 'See everything you\u2019ve walked, by day, month and year', today2: 'Today', thisMonth: 'This month', thisYear: 'This year',
-    addToday: 'Add today\u2019s steps', stepsEmpty: 'No steps recorded yet.', stepsEmptyHint: 'The Shortcuts automation sends steps here every evening, or add them yourself anytime.',
     countryInfo: 'Useful info: {country}', countryHint: 'Emergency, money, plugs, phrases', emergency: 'Emergency', call: 'Call {n}',
     embassy: 'Embassy of Romania', embassyHint: 'See on map', money: 'Money', rate: '1 {cur} = {ron} RON', convert: 'Converter',
     localTime: 'Local time', sameTime: 'Same time as Romania', timeDiff: '{h} h vs Romania', plugs: 'Plugs',
@@ -136,24 +127,8 @@ const settings = Object.assign(
   load(K_SETTINGS, {})
 );
 const trips = load(K_TRIPS, {});
-const stepsStore = load(K_STEPS, {});
 const saveTrips = () => store(K_TRIPS, trips);
 const saveSettings = () => store(K_SETTINGS, settings);
-const saveSteps = () => store(K_STEPS, stepsStore);
-
-(() => {
-  let migrated = false;
-  for (const tr of Object.values(trips)) {
-    if (!tr.steps) continue;
-    for (const [d, n] of Object.entries(tr.steps)) if (stepsStore[d] == null) (stepsStore[d] = n), (migrated = true);
-    delete tr.steps;
-    migrated = true;
-  }
-  if (migrated) {
-    saveSteps();
-    saveTrips();
-  }
-})();
 
 if (location.hash.startsWith('#key=')) {
   settings.token = decodeURIComponent(location.hash.slice(5));
@@ -438,17 +413,6 @@ function regenerateDay(trip, d) {
   afterEdit(trip, [...dropped, ...current.filter((id) => !pick.includes(id))]);
 }
 
-function editSteps(date, after) {
-  const cur = stepsStore[date];
-  const v = prompt(t('stepsPrompt'), cur != null ? String(cur) : '');
-  if (v === null) return;
-  const n = parseInt(v.replace(/\D/g, ''), 10);
-  if (Number.isFinite(n) && n >= 0) stepsStore[date] = n;
-  else delete stepsStore[date];
-  saveSteps();
-  after();
-}
-
 function toast(msg) {
   let el = document.getElementById('toast');
   if (!el) {
@@ -647,8 +611,6 @@ function route() {
   }
   document.body.classList.remove('hero-page', 'scrolled');
   const h = location.hash.slice(1) || '/';
-  if (h.startsWith('steps=')) return importSteps(h);
-  if (h === '/steps') return renderSteps();
   if (h.startsWith('share=')) return importShared(h.slice(6));
   if (h.startsWith('/trip/')) {
     const trip = trips[h.slice(6)];
@@ -769,19 +731,6 @@ async function pageImages(items, size = 640) {
 }
 const heroImage = (trip) => trip.plan.attractions.find((a) => a.image)?.image || null;
 
-function dayWalkKm(trip, day) {
-  let km = 0;
-  let any = false;
-  for (const it of day.items) {
-    if (it.type !== 'visit') continue;
-    const a = info(trip, it.attractionId);
-    any = true;
-    km += it.travelMode === 'walk' ? (it.travelMin * 4.5) / 60 : 0.6;
-    if (a) km += a.durationMin * (a.indoor ? 0.012 : 0.02);
-  }
-  return any ? km + 1 : 0;
-}
-
 function applyTheme() {
   const th = settings.theme;
   if (th === 'light' || th === 'dark') document.documentElement.dataset.theme = th;
@@ -873,18 +822,6 @@ async function openCountry(trip) {
   });
 }
 
-function importSteps(h) {
-  const q = new URLSearchParams(h.replace('steps=', 'n='));
-  const n = parseInt(q.get('n'), 10);
-  const date = q.get('date');
-  history.replaceState(null, '', `${location.pathname}#/steps`);
-  if (!Number.isFinite(n) || !date) return route();
-  stepsStore[date] = n;
-  saveSteps();
-  route();
-  toast(t('stepsSaved', { n: new Intl.NumberFormat(locale()).format(n), d: fmt(date, { day: 'numeric', month: 'short' }) }));
-}
-
 function exportBackup() {
   const data = { app: 'hoinar', version: 1, exported: new Date().toISOString(), settings: { lang: settings.lang, peron: settings.peron, theme: settings.theme }, trips };
   const name = `hoinar-backup-${today()}.json`;
@@ -940,10 +877,6 @@ function renderHome() {
           `<a class="today" href="#/trip/${tr.id}">${icon('locate')}<span><strong>${esc(t('todayIn', { city: tr.plan.city }))}</strong><small>${t('todayDay', { n: i + 1, total: tr.plan.days.length })}</small></span>${icon('chev')}</a>`
       )
       .join('')}
-    <button class="tile steps-tile" type="button" id="steps-entry"><span class="tile-ic">${icon('walk')}</span><span><strong>${t('myStepsTitle')}</strong><small>${t('myStepsHint')}</small></span>${icon(
-      'chev',
-      'go'
-    )}</button>
     ${
       list.length
         ? `<div class="trip-grid">${list
@@ -957,7 +890,6 @@ function renderHome() {
         : `<div class="empty">${icon('globe')}<p><strong>${t('emptyTitle')}</strong></p><p>${t('emptyText')}</p></div>`
     }
     <div class="cta"><a class="btn primary pill" href="#/new">${icon('plus')}${t('newTrip')}</a></div>`;
-  document.getElementById('steps-entry').addEventListener('click', () => (location.hash = '#/steps'));
   app.querySelectorAll('[data-del]').forEach((b) =>
     b.addEventListener('click', () => {
       const tr = trips[b.dataset.del];
@@ -972,71 +904,6 @@ function renderHome() {
 
 function pageHead(title) {
   return `<header class="page-head"><a class="icon-btn" href="#/" aria-label="${t('back')}">${icon('back')}</a></header><h1 class="page-title">${title}</h1>`;
-}
-
-function stepsInRange(fromDate, toDate) {
-  let sum = 0;
-  for (const [d, n] of Object.entries(stepsStore)) if (d >= fromDate && d <= toDate) sum += n;
-  return sum;
-}
-
-function renderSteps() {
-  const nf = new Intl.NumberFormat(locale());
-  const todayStr = today();
-  const monthStart = todayStr.slice(0, 7) + '-01';
-  const yearStart = todayStr.slice(0, 4) + '-01-01';
-  const days = Object.keys(stepsStore).sort((a, b) => b.localeCompare(a));
-
-  const groups = [];
-  for (const d of days) {
-    const ym = d.slice(0, 7);
-    let g = groups.find((x) => x.ym === ym);
-    if (!g) groups.push((g = { ym, days: [], sum: 0 }));
-    g.days.push(d);
-    g.sum += stepsStore[d];
-  }
-
-  const chartDays = Array.from({ length: 14 }, (_, i) => addDays(todayStr, i - 13));
-  const chartMax = Math.max(1, ...chartDays.map((d) => stepsStore[d] || 0));
-
-  app.innerHTML = `
-    ${pageHead(t('myStepsTitle'))}
-    <div class="stat-row">
-      <button class="stat-card" type="button" id="st-today"><small>${t('today2')}</small><strong>${nf.format(stepsStore[todayStr] || 0)}</strong></button>
-      <div class="stat-card"><small>${t('thisMonth')}</small><strong>${nf.format(stepsInRange(monthStart, todayStr))}</strong></div>
-      <div class="stat-card"><small>${t('thisYear')}</small><strong>${nf.format(stepsInRange(yearStart, todayStr))}</strong></div>
-    </div>
-    <div class="chart card">${chartDays
-      .map((d) => {
-        const v = stepsStore[d] || 0;
-        const h = Math.max(3, Math.round((v / chartMax) * 100));
-        return `<button class="bar${d === todayStr ? ' today' : ''}" type="button" data-steps="${d}" style="--h:${h}%" aria-label="${fmt(d, { day: 'numeric', month: 'short' })}: ${nf.format(v)}"></button>`;
-      })
-      .join('')}</div>
-    ${
-      groups.length
-        ? groups
-            .map(
-              (g) => `
-      <h3 class="rhead">${esc(fmt(g.ym + '-01', { month: 'long', year: 'numeric' }))}<small class="gsum">${nf.format(g.sum)}</small></h3>
-      <ul class="steps-list">${g.days
-        .map(
-          (d) =>
-            `<li><button class="stop-body" type="button" data-steps="${d}"><span class="txt"><strong>${esc(fmt(d, { weekday: 'short', day: 'numeric' }))}</strong></span><strong class="svalue">${nf.format(
-              stepsStore[d]
-            )}</strong>${icon('edit', 'sm')}</button></li>`
-        )
-        .join('')}</ul>`
-            )
-            .join('')
-        : `<div class="empty">${icon('walk')}<p><strong>${t('stepsEmpty')}</strong></p><p>${t('stepsEmptyHint')}</p></div>`
-    }
-    <div style="height:90px"></div>
-    <div class="cta"><button class="btn primary pill" id="add-today" type="button">${icon('plus')}${t('addToday')}</button></div>`;
-
-  app.querySelectorAll('[data-steps]').forEach((b) => b.addEventListener('click', () => editSteps(b.dataset.steps, renderSteps)));
-  document.getElementById('add-today').addEventListener('click', () => editSteps(todayStr, renderSteps));
-  document.getElementById('st-today').addEventListener('click', () => editSteps(todayStr, renderSteps));
 }
 
 function renderNew() {
@@ -1189,14 +1056,6 @@ function renderTrip(trip, keepScroll = false) {
           parts.push(`<span>${wxIcon(w.code)}${Math.round(w.tmin)}\u2013${Math.round(w.tmax)}\u00B0C</span>`, `<span>${icon('drop')}${w.rainProb ?? 0}%</span>`);
           if (w.sunset) parts.push(`<span>${icon('sunset')}${w.sunset}</span>`);
         }
-        const real = stepsStore[day.date];
-        const km = dayWalkKm(trip, day);
-        if (real != null) {
-          parts.push(`<button class="wx-steps" type="button" data-steps="${day.date}">${icon('walk')}${t('stepsReal', { n: new Intl.NumberFormat(locale()).format(real), km: fmtKm(km) })}${icon('edit', 'sm')}</button>`);
-        } else if (visits.length) {
-          const steps = Math.round((km * 1350) / 100) * 100;
-          parts.push(`<button class="wx-steps" type="button" data-steps="${day.date}">${icon('walk')}${t('steps', { n: new Intl.NumberFormat(locale()).format(steps), km: fmtKm(km) })}${icon('edit', 'sm')}</button>`);
-        }
         return parts.length ? `<p class="wxline">${parts.join('')}</p>` : '';
       })()}
       ${
@@ -1258,7 +1117,6 @@ function renderTrip(trip, keepScroll = false) {
   app.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => moveToDay(trip, null, state.day, b.dataset.add)));
   document.getElementById('regen')?.addEventListener('click', () => regenerateDay(trip, state.day));
   document.getElementById('locate')?.addEventListener('click', (e) => locate(trip, info(trip, e.currentTarget.dataset.target)));
-  app.querySelectorAll('[data-steps]').forEach((b) => b.addEventListener('click', () => editSteps(b.dataset.steps, () => renderTrip(trip, true))));
   const nav = app.querySelector('.days');
   const sel = nav?.querySelector('[aria-selected=true]');
   if (sel) nav.scrollLeft = sel.offsetLeft - nav.clientWidth / 2 + sel.clientWidth / 2;

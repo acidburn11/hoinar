@@ -59,6 +59,12 @@ const STR = {
     wxTitle: 'Vremea', wxUpdated: 'Actualizat acum {m} min', wxUpdating: 'Actualizez...', wxHourly: 'Pe ore', wxWind: 'vant {n} km/h',
     wxRainMm: '{n} mm', wxTip: 'Sfat', wxTipUmbrella: 'Ia umbrela, sunt sanse mari de ploaie.', wxTipCold: 'Dimineata e frig, imbraca-te gros.',
     wxTipHot: 'Va fi foarte cald, ia apa si crema solara.', wxTipWind: 'Vant puternic, evita punctele de belvedere expuse.',
+    flTitle: 'Zboruri', flOut: 'Zbor tur', flRet: 'Zbor retur', flAdd: 'Adauga numarul zborului', flNumber: 'Numar zbor', flNumberPh: 'ex. LH1234',
+    flDate: 'Data', flSave: 'Salveaza', flRemove: 'Sterge zborul', flNotFound: 'Nu am gasit acest zbor. Verifica numarul si data.',
+    flInvalid: 'Numar de zbor invalid. Foloseste formatul IATA, ex. LH1234.', flNotConfigured: 'Cautarea de zboruri nu e configurata pe server.',
+    flRateLimit: 'Limita lunara de cautari zboruri a fost atinsa.', flRefresh: 'Actualizeaza', flUpdated: 'Actualizat acum {m} min',
+    flScheduled: 'Programat', flActive: 'In zbor', flLanded: 'Aterizat', flCancelled: 'Anulat', flDiverted: 'Deviat', flUnknown: 'Necunoscut',
+    flDelay: 'Intarziere {n} min', flOnTime: 'La timp', flTerminal: 'Terminal {n}', flGate: 'Poarta {n}', flBaggage: 'Banda {n}',
   },
   en: {
     tagline: 'Sights, a day-by-day plan and a map for any city.',
@@ -112,6 +118,12 @@ const STR = {
     wxTitle: 'Weather', wxUpdated: 'Updated {m} min ago', wxUpdating: 'Updating...', wxHourly: 'Hourly', wxWind: 'wind {n} km/h',
     wxRainMm: '{n} mm', wxTip: 'Tip', wxTipUmbrella: 'Bring an umbrella, high chance of rain.', wxTipCold: 'Cold morning, dress warmly.',
     wxTipHot: 'It will be very hot, bring water and sunscreen.', wxTipWind: 'Strong wind, avoid exposed viewpoints.',
+    flTitle: 'Flights', flOut: 'Outbound flight', flRet: 'Return flight', flAdd: 'Add flight number', flNumber: 'Flight number', flNumberPh: 'e.g. LH1234',
+    flDate: 'Date', flSave: 'Save', flRemove: 'Remove flight', flNotFound: 'Flight not found. Check the number and date.',
+    flInvalid: 'Invalid flight number. Use IATA format, e.g. LH1234.', flNotConfigured: 'Flight lookup is not configured on the server.',
+    flRateLimit: 'Monthly flight lookup limit reached.', flRefresh: 'Refresh', flUpdated: 'Updated {m} min ago',
+    flScheduled: 'Scheduled', flActive: 'In flight', flLanded: 'Landed', flCancelled: 'Cancelled', flDiverted: 'Diverted', flUnknown: 'Unknown',
+    flDelay: '{n} min delay', flOnTime: 'On time', flTerminal: 'Terminal {n}', flGate: 'Gate {n}', flBaggage: 'Belt {n}',
   },
 };
 
@@ -719,6 +731,7 @@ const ICON = {
   chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
   drop: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+  plane: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-1 .1-1.3.5l-.7.7c-.5.5-.3 1.3.4 1.5l5.8 2.2-3 3.5H2.5l-1.3 1.3c-.3.3-.3.8 0 1.1L3 19l1.8 1.8c.3.3.8.3 1.1 0L7.2 19.5v-3.7l3.5-3 2.2 5.8c.2.7 1 .9 1.5.4l.7-.7c.4-.3.6-.8.5-1.3z"/>',
 };
 const icon = (name, cls = '') =>
   `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[name] || ''}</svg>`;
@@ -902,6 +915,131 @@ async function openWeather(trip) {
     hHtml += '</div>';
     showSheet(hHtml);
   }));
+}
+
+function flTileSummary(trip) {
+  const f = trip.flights || {};
+  const n = (f.out ? 1 : 0) + (f.ret ? 1 : 0);
+  if (!n) return t('flAdd');
+  const bits = [];
+  if (f.out) bits.push(f.out.number);
+  if (f.ret) bits.push(f.ret.number);
+  return bits.join(' \u2022 ');
+}
+
+const FL_STATUS_KEY = { scheduled: 'flScheduled', active: 'flActive', landed: 'flLanded', cancelled: 'flCancelled', diverted: 'flDiverted' };
+
+function flStatusLabel(status) {
+  return t(FL_STATUS_KEY[status] || 'flUnknown');
+}
+
+function flTimeShort(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
+function flightCardHtml(slug, saved) {
+  const label = t(slug === 'out' ? 'flOut' : 'flRet');
+  if (!saved) {
+    return `<div class="card fl-card"><strong>${label}</strong><button class="btn small wide" type="button" data-fladd="${slug}">${icon('plus')}${t('flAdd')}</button></div>`;
+  }
+  if (saved.error) {
+    return `<div class="card fl-card"><div class="fl-head"><strong>${label}</strong><span class="fl-number">${esc(saved.number)}</span></div><p class="fl-err">${esc(saved.error)}</p><div class="fl-actions"><button class="btn small" type="button" data-fladd="${slug}">${icon('edit', 'sm')}${t('flSave')}</button><button class="icon-btn" type="button" data-flrefresh="${slug}">${icon('refresh')}</button></div></div>`;
+  }
+  const d = saved.data;
+  const mins = Math.round((Date.now() - d.fetched) / 60000);
+  const delayed = d.delayMin > 0;
+  return `<div class="card fl-card${delayed ? ' fl-delayed' : ''}">
+    <div class="fl-head"><strong>${label}</strong><span class="fl-status fl-${d.status}">${esc(flStatusLabel(d.status))}</span></div>
+    <div class="fl-route">
+      <div class="fl-ap"><strong>${esc(d.departure.iata || '?')}</strong><small>${flTimeShort(d.departure.estimated || d.departure.scheduled)}</small></div>
+      ${icon('plane')}
+      <div class="fl-ap fl-ap-end"><strong>${esc(d.arrival.iata || '?')}</strong><small>${flTimeShort(d.arrival.estimated || d.arrival.scheduled)}</small></div>
+    </div>
+    <p class="fl-meta">${delayed ? `<span class="fl-delay">${esc(t('flDelay', { n: d.delayMin }))}</span>` : `<span class="fl-ontime">${t('flOnTime')}</span>`}
+      ${d.departure.terminal ? ` \u2022 ${esc(t('flTerminal', { n: d.departure.terminal }))}` : ''}
+      ${d.departure.gate ? ` \u2022 ${esc(t('flGate', { n: d.departure.gate }))}` : ''}
+      ${d.arrival.baggage ? ` \u2022 ${esc(t('flBaggage', { n: d.arrival.baggage }))}` : ''}
+    </p>
+    <p class="fl-updated">${t('flUpdated', { m: mins })}</p>
+    <div class="fl-actions"><button class="icon-btn" type="button" data-flrefresh="${slug}">${icon('refresh')}</button><button class="icon-btn" type="button" data-fledit="${slug}">${icon('edit', 'sm')}</button><button class="icon-btn" type="button" data-fldel="${slug}">${icon('trash')}</button></div>
+  </div>`;
+}
+
+async function openFlights(trip) {
+  trip.flights ||= {};
+  const head = `<h2 id="sheet-title" class="sheet-top">${esc(t('flTitle'))}</h2>`;
+  const render = () => `${head}${flightCardHtml('out', trip.flights.out)}${flightCardHtml('ret', trip.flights.ret)}`;
+  showSheet(render());
+  wireFlightSheet(trip, render);
+}
+
+function wireFlightSheet(trip, render) {
+  sheet.querySelectorAll('[data-fladd],[data-fledit]').forEach((b) =>
+    b.addEventListener('click', () => flightForm(trip, b.dataset.fladd || b.dataset.fledit, render))
+  );
+  sheet.querySelectorAll('[data-flrefresh]').forEach((b) =>
+    b.addEventListener('click', () => refreshFlight(trip, b.dataset.flrefresh, render, true))
+  );
+  sheet.querySelectorAll('[data-fldel]').forEach((b) =>
+    b.addEventListener('click', () => {
+      delete trip.flights[b.dataset.fldel];
+      saveTrips();
+      showSheet(render());
+      wireFlightSheet(trip, render);
+    })
+  );
+}
+
+function flightForm(trip, slug, parentRender) {
+  const cur = trip.flights[slug];
+  const defDate = slug === 'out' ? trip.input.start : trip.input.end;
+  const head = `<h2 id="sheet-title" class="sheet-top">${esc(t(slug === 'out' ? 'flOut' : 'flRet'))}</h2>`;
+  showSheet(`${head}
+    <div class="field"><label for="fl-num">${t('flNumber')}</label><input id="fl-num" type="text" autocomplete="off" autocapitalize="characters" placeholder="${t('flNumberPh')}" value="${esc(cur?.number || '')}"></div>
+    <div class="field last"><label for="fl-date">${t('flDate')}</label><input id="fl-date" type="date" value="${cur?.date || defDate}"></div>
+    <button class="btn primary pill wide" type="button" id="fl-save">${t('flSave')}</button>
+    <div style="height:30px"></div>`);
+  document.getElementById('fl-save').addEventListener('click', async () => {
+    const number = document.getElementById('fl-num').value.trim().toUpperCase().replace(/\s+/g, '');
+    const date = document.getElementById('fl-date').value;
+    if (!FL_RE.test(number)) {
+      toast(t('flInvalid'));
+      return;
+    }
+    trip.flights[slug] = { number, date };
+    saveTrips();
+    await refreshFlight(trip, slug, parentRender, false);
+  });
+}
+
+const FL_RE = /^[A-Za-z]{1,2}\d{1,4}[A-Za-z]?$/;
+
+async function refreshFlight(trip, slug, parentRender, reopen) {
+  const saved = trip.flights[slug];
+  if (!saved) return;
+  if (reopen) {
+    showSheet(parentRender());
+    wireFlightSheet(trip, parentRender);
+  }
+  try {
+    const data = await api('/flight', { number: saved.number, date: saved.date }, 15000);
+    trip.flights[slug] = { number: saved.number, date: saved.date, data };
+  } catch (e) {
+    const msg =
+      e.message === t('errNotFound') ? t('flNotFound') :
+      e.message === 'flight_rate_limit' ? t('flRateLimit') :
+      e.message === 'flight_not_configured' ? t('flNotConfigured') :
+      e.message === t('errNetwork') ? t('errNetwork') : e.message;
+    trip.flights[slug] = { number: saved.number, date: saved.date, error: msg };
+  }
+  saveTrips();
+  showSheet(parentRender());
+  wireFlightSheet(trip, parentRender);
 }
 
 async function openCountry(trip) {
@@ -1226,6 +1364,7 @@ function renderTrip(trip, keepScroll = false) {
         'nearStay'
       )}</strong><small>${t('nearStayHint')}</small></span>${icon('chev', 'go')}</button>
       <button class="tile" type="button" id="wx-tile"><span class="tile-ic wx-tile-ic">${icon('cloud')}</span><span><strong>${t('wxTitle')}</strong><small>${wxTileSummary(trip)}</small></span>${icon('chev', 'go')}</button>
+      <button class="tile" type="button" id="fl-tile"><span class="tile-ic fl-tile-ic">${icon('plane')}</span><span><strong>${t('flTitle')}</strong><small>${flTileSummary(trip)}</small></span>${icon('chev', 'go')}</button>
       <button class="tile" type="button" id="country"><span class="tile-ic">${icon('info')}</span><span><strong>${esc(t('countryInfo', { country: p.country }))}</strong><small>${t(
         'countryHint'
       )}</small></span>${icon('chev', 'go')}</button>
@@ -1263,6 +1402,7 @@ function renderTrip(trip, keepScroll = false) {
   });
   document.getElementById('more').addEventListener('click', () => moreMenu(trip));
   document.getElementById('wx-tile').addEventListener('click', () => openWeather(trip));
+  document.getElementById('fl-tile').addEventListener('click', () => openFlights(trip));
   document.getElementById('country').addEventListener('click', () => openCountry(trip));
   app.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => removeFromDay(trip, state.day, b.dataset.remove)));
   app.querySelectorAll('[data-move]').forEach((sel) =>

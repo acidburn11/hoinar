@@ -127,8 +127,45 @@ const settings = Object.assign(
   load(K_SETTINGS, {})
 );
 const trips = load(K_TRIPS, {});
-const saveTrips = () => store(K_TRIPS, trips);
+const saveTrips = () => { store(K_TRIPS, trips); syncPush(); };
 const saveSettings = () => store(K_SETTINGS, settings);
+
+let _syncTs = +(localStorage.getItem('hoinar.syncTs') || 0);
+let _pushTimer;
+function syncPush() {
+  if (!settings.token) return;
+  clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(async () => {
+    _syncTs = Date.now();
+    try {
+      localStorage.setItem('hoinar.syncTs', _syncTs);
+      await fetch(settings.api.replace(/\/+$/, '') + '/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-App-Token': settings.token },
+        body: JSON.stringify({ ts: _syncTs, trips }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch {}
+  }, 3000);
+}
+async function syncPull() {
+  if (!settings.token) return;
+  try {
+    const r = await fetch(settings.api.replace(/\/+$/, '') + '/sync', {
+      headers: { 'X-App-Token': settings.token },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.trips || data.ts <= _syncTs) return;
+    _syncTs = data.ts;
+    localStorage.setItem('hoinar.syncTs', _syncTs);
+    Object.keys(trips).forEach((k) => delete trips[k]);
+    Object.assign(trips, data.trips);
+    store(K_TRIPS, trips);
+    if (location.hash.length < 3) renderHome();
+  } catch {}
+}
 
 if (location.hash.startsWith('#key=')) {
   settings.token = decodeURIComponent(location.hash.slice(5));
@@ -1390,5 +1427,6 @@ window.addEventListener('scroll', onScroll, { passive: true });
 document.documentElement.lang = settings.lang;
 applyTheme();
 route();
+syncPull();
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

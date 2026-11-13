@@ -1041,7 +1041,9 @@ function renderHome() {
     }
     <div class="cta"><a class="btn primary pill" href="#/new">${icon('plus')}${t('newTrip')}</a></div>`;
   app.querySelectorAll('[data-del]').forEach((b) =>
-    b.addEventListener('click', () => {
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const tr = trips[b.dataset.del];
       if (!tr || !confirm(t('confirmDelete', { city: tr.plan.city }))) return;
       delete trips[tr.id];

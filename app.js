@@ -19,6 +19,7 @@ const STR = {
     generate: 'Genereaza planul', generating: 'Caut atractiile si fac programul...',
     errCity: 'Scrie orasul.', errDates: 'Data de sfarsit e inaintea celei de inceput.', errLong: 'Planul poate avea cel mult 14 zile.',
     errToken: 'Lipseste cheia de acces. Adaug-o in setari.', errBadToken: 'Cheia de acces nu e corecta. Verific-o in setari.',
+    storageFull: 'Memoria telefonului e plina, modificarile nu se salveaza local.', wxFar: 'Prognoza e disponibila doar pentru urmatoarele ~16 zile.', wxPast: 'Perioada a trecut, nu mai exista prognoza.', wxPartial: 'Prognoza acopera doar o parte din zile (limita ~16 zile).',
     errNotFound: 'Nu am gasit orasul sau atractii in jurul lui. Verifica numele orasului.',
     errNetwork: 'Serverul nu raspunde. Verifica conexiunea si incearca din nou.',
     delete: 'Sterge', confirmDelete: 'Stergi calatoria in {city}?',
@@ -36,8 +37,7 @@ const STR = {
     theme: 'Tema', themeAuto: 'Automata', themeLight: 'Luminoasa', themeDark: 'Intunecata',
     backup: 'Backup', exportBtn: 'Exporta calatoriile', importBtn: 'Importa din fisier', backupHint: 'Fisierul contine calatoriile si setarile, fara cheia de acces.',
     imported: 'Am importat {n} calatorii.', importErr: 'Fisierul nu e un backup Hoinar valid.',
-    countryInfo: 'Info utile: {country}', countryHint: 'Urgente, bani, priza, fraze', emergency: 'Urgente', call: 'Suna la {n}',
-    embassy: 'Ambasada Romaniei', embassyHint: 'Vezi pe harta', money: 'Bani', rate: '1 {cur} = {ron} lei', convert: 'Convertor',
+    countryInfo: 'Info utile: {country}', countryHint: 'Urgente, bani, priza, fraze', emergency: 'Urgente',     embassy: 'Ambasada Romaniei', embassyHint: 'Vezi pe harta', money: 'Bani', rate: '1 {cur} = {ron} lei', convert: 'Convertor',
     localTime: 'Ora locala', sameTime: 'Aceeasi ora ca in Romania', timeDiff: '{h} h fata de Romania', plugs: 'Priza',
     plugOk: 'Tip {p}. Incarcatoarele din Romania merg fara adaptor.', plugNeed: 'Tip {p}. Ai nevoie de adaptor.',
     langLabel: 'Limba', tipping: 'Bacsis', phrases: 'Fraze utile', goodToKnow: 'Bun de stiut', lei: 'lei',
@@ -54,16 +54,17 @@ const STR = {
     preparing: 'Pregatesc...', loadingShared: 'Deschid planul primit...', sharedErr: 'Linkul a expirat sau nu s-a putut deschide.',
     dayN: 'Ziua {n}', dinner: 'Cina', lunchHint: 'Vezi restaurante in apropiere', nearStay: 'Restaurante langa cazare', restNear: 'Restaurante langa {place}',
     famousIn: 'Celebre in {city}', topNear: 'Cele mai apreciate in zona', inArea: 'In zona',
-    searching: 'Caut restaurante...', noRest: 'Nu am gasit restaurante in zona.', restSources: 'Surse: {s}',
-    price1: 'ieftin', price2: 'pret mediu', price3: 'scump', price4: 'foarte scump',
-    wxTitle: 'Vremea', wxUpdated: 'Actualizat acum {m} min', wxUpdating: 'Actualizez...', wxHourly: 'Pe ore', wxWind: 'vant {n} km/h',
-    wxRainMm: '{n} mm', wxTip: 'Sfat', wxTipUmbrella: 'Ia umbrela, sunt sanse mari de ploaie.', wxTipCold: 'Dimineata e frig, imbraca-te gros.',
+    searching: 'Caut restaurante...', noRest: 'Nu am gasit restaurante in zona.',     price1: 'ieftin', price2: 'pret mediu', price3: 'scump', price4: 'foarte scump',
+    wxTitle: 'Vremea', wxUpdated: 'Actualizat acum {m} min', wxUpdating: 'Actualizez...', wxWind: 'vant {n} km/h',
+    wxRainMm: '{n} mm', wxTipUmbrella: 'Ia umbrela, sunt sanse mari de ploaie.', wxTipCold: 'Dimineata e frig, imbraca-te gros.',
     wxTipHot: 'Va fi foarte cald, ia apa si crema solara.', wxTipWind: 'Vant puternic, evita punctele de belvedere expuse.',
     flTitle: 'Zboruri', flOut: 'Zbor tur', flRet: 'Zbor retur', flAdd: 'Adauga numarul zborului', flNumber: 'Numar zbor', flNumberPh: 'ex. LH1234',
-    flDate: 'Data', flSave: 'Salveaza', flRemove: 'Sterge zborul', flNotFound: 'Nu am gasit acest zbor. Verifica numarul si data.',
+    flDate: 'Data', flSave: 'Salveaza', flNotFound: 'Nu am gasit acest zbor. Verifica numarul si data.',
     flInvalid: 'Numar de zbor invalid. Foloseste formatul IATA, ex. LH1234.', flNotConfigured: 'Cautarea de zboruri nu e configurata pe server.',
-    flRateLimit: 'Limita lunara de cautari zboruri a fost atinsa.', flRefresh: 'Actualizeaza', flUpdated: 'Actualizat acum {m} min',
+    flServiceError: 'Serviciul de zboruri nu raspunde acum. Incearca mai tarziu.', flRateLimit: 'Limita lunara de cautari zboruri a fost atinsa.', flUpdated: 'Actualizat acum {m} min',
     flScheduled: 'Programat', flActive: 'In zbor', flLanded: 'Aterizat', flCancelled: 'Anulat', flDiverted: 'Deviat', flUnknown: 'Necunoscut',
+    statsTitle: 'Statistici', statsHint: 'Orase, tari, zile si kilometri', stTrips: 'Calatorii', stCities: 'Orase', stCountries: 'Tari', stDays: 'Zile', stPlaces: 'Locuri planificate',
+    stWalk: 'Pe jos (estimat)', stUpcoming: 'Urmatoare', stPast: 'Incheiate', stList: 'Destinatii', stEmpty: 'Nicio calatorie inca.', stLongest: 'Cea mai lunga',
     flDelay: 'Intarziere {n} min', flOnTime: 'La timp', flTerminal: 'Terminal {n}', flGate: 'Poarta {n}', flBaggage: 'Banda {n}',
   },
   en: {
@@ -78,6 +79,7 @@ const STR = {
     generate: 'Create plan', generating: 'Finding sights and building your days...',
     errCity: 'Enter a city.', errDates: 'The end date is before the start date.', errLong: 'A plan can cover up to 14 days.',
     errToken: 'Access key missing. Add it in settings.', errBadToken: 'The access key is wrong. Check it in settings.',
+    storageFull: 'Phone storage is full, changes are not saved locally.', wxFar: 'Forecast is only available for the next ~16 days.', wxPast: 'This period has passed, no forecast available.', wxPartial: 'Forecast covers only some of the days (~16-day limit).',
     errNotFound: 'Couldn\u2019t find the city or sights around it. Check the city name.',
     errNetwork: 'The server isn\u2019t responding. Check your connection and try again.',
     delete: 'Delete', confirmDelete: 'Delete the {city} trip?',
@@ -95,8 +97,7 @@ const STR = {
     theme: 'Theme', themeAuto: 'Automatic', themeLight: 'Light', themeDark: 'Dark',
     backup: 'Backup', exportBtn: 'Export trips', importBtn: 'Import from file', backupHint: 'The file contains your trips and settings, without the access key.',
     imported: 'Imported {n} trips.', importErr: 'This file isn\u2019t a valid Hoinar backup.',
-    countryInfo: 'Useful info: {country}', countryHint: 'Emergency, money, plugs, phrases', emergency: 'Emergency', call: 'Call {n}',
-    embassy: 'Embassy of Romania', embassyHint: 'See on map', money: 'Money', rate: '1 {cur} = {ron} RON', convert: 'Converter',
+    countryInfo: 'Useful info: {country}', countryHint: 'Emergency, money, plugs, phrases', emergency: 'Emergency',     embassy: 'Embassy of Romania', embassyHint: 'See on map', money: 'Money', rate: '1 {cur} = {ron} RON', convert: 'Converter',
     localTime: 'Local time', sameTime: 'Same time as Romania', timeDiff: '{h} h vs Romania', plugs: 'Plugs',
     plugOk: 'Type {p}. Romanian chargers work without an adapter.', plugNeed: 'Type {p}. You need an adapter.',
     langLabel: 'Language', tipping: 'Tipping', phrases: 'Useful phrases', goodToKnow: 'Good to know', lei: 'RON',
@@ -113,16 +114,17 @@ const STR = {
     preparing: 'Preparing...', loadingShared: 'Opening shared plan...', sharedErr: 'This link has expired or couldn\u2019t be opened.',
     dayN: 'Day {n}', dinner: 'Dinner', lunchHint: 'See nearby restaurants', nearStay: 'Restaurants near your stay', restNear: 'Restaurants near {place}',
     famousIn: 'Famous in {city}', topNear: 'Top rated nearby', inArea: 'Nearby',
-    searching: 'Finding restaurants...', noRest: 'No restaurants found nearby.', restSources: 'Sources: {s}',
-    price1: 'cheap', price2: 'mid-range', price3: 'pricey', price4: 'very pricey',
-    wxTitle: 'Weather', wxUpdated: 'Updated {m} min ago', wxUpdating: 'Updating...', wxHourly: 'Hourly', wxWind: 'wind {n} km/h',
-    wxRainMm: '{n} mm', wxTip: 'Tip', wxTipUmbrella: 'Bring an umbrella, high chance of rain.', wxTipCold: 'Cold morning, dress warmly.',
+    searching: 'Finding restaurants...', noRest: 'No restaurants found nearby.',     price1: 'cheap', price2: 'mid-range', price3: 'pricey', price4: 'very pricey',
+    wxTitle: 'Weather', wxUpdated: 'Updated {m} min ago', wxUpdating: 'Updating...', wxWind: 'wind {n} km/h',
+    wxRainMm: '{n} mm', wxTipUmbrella: 'Bring an umbrella, high chance of rain.', wxTipCold: 'Cold morning, dress warmly.',
     wxTipHot: 'It will be very hot, bring water and sunscreen.', wxTipWind: 'Strong wind, avoid exposed viewpoints.',
     flTitle: 'Flights', flOut: 'Outbound flight', flRet: 'Return flight', flAdd: 'Add flight number', flNumber: 'Flight number', flNumberPh: 'e.g. LH1234',
-    flDate: 'Date', flSave: 'Save', flRemove: 'Remove flight', flNotFound: 'Flight not found. Check the number and date.',
+    flDate: 'Date', flSave: 'Save', flNotFound: 'Flight not found. Check the number and date.',
     flInvalid: 'Invalid flight number. Use IATA format, e.g. LH1234.', flNotConfigured: 'Flight lookup is not configured on the server.',
-    flRateLimit: 'Monthly flight lookup limit reached.', flRefresh: 'Refresh', flUpdated: 'Updated {m} min ago',
+    flServiceError: 'Flight service is not responding. Try again later.', flRateLimit: 'Monthly flight lookup limit reached.', flUpdated: 'Updated {m} min ago',
     flScheduled: 'Scheduled', flActive: 'In flight', flLanded: 'Landed', flCancelled: 'Cancelled', flDiverted: 'Diverted', flUnknown: 'Unknown',
+    statsTitle: 'Stats', statsHint: 'Cities, countries, days and kilometres', stTrips: 'Trips', stCities: 'Cities', stCountries: 'Countries', stDays: 'Days', stPlaces: 'Places planned',
+    stWalk: 'On foot (est.)', stUpcoming: 'Upcoming', stPast: 'Completed', stList: 'Destinations', stEmpty: 'No trips yet.', stLongest: 'Longest',
     flDelay: '{n} min delay', flOnTime: 'On time', flTerminal: 'Terminal {n}', flGate: 'Gate {n}', flBaggage: 'Belt {n}',
   },
 };
@@ -145,49 +147,124 @@ const settings = Object.assign(
   load(K_SETTINGS, {})
 );
 const trips = load(K_TRIPS, {});
-const saveTrips = () => { store(K_TRIPS, trips); syncPush(); };
+const K_SIGS = 'hoinar.sigs';
+const K_DEL = 'hoinar.deleted';
+let sigs = load(K_SIGS, {});
+let deleted = load(K_DEL, {});
+const hashStr = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return h + ':' + str.length; };
+const tripSig = (tr) => { const { updatedAt, ...rest } = tr; return hashStr(JSON.stringify(rest)); };
+let storeFailed = false;
+const storeChecked = (k, v) => {
+  try { localStorage.setItem(k, JSON.stringify(v)); storeFailed = false; return true; } catch { if (!storeFailed) { storeFailed = true; try { toast(t('storageFull')); } catch {} } return false; }
+};
+function stamp() {
+  const now = Date.now();
+  for (const id of Object.keys(trips)) {
+    const sg = tripSig(trips[id]);
+    if (sigs[id] !== sg) { trips[id].updatedAt = now; sigs[id] = sg; delete deleted[id]; }
+  }
+  for (const id of Object.keys(sigs)) if (!trips[id]) { deleted[id] = now; delete sigs[id]; }
+}
+const saveTrips = () => {
+  stamp();
+  storeChecked(K_TRIPS, trips);
+  store(K_SIGS, sigs);
+  store(K_DEL, deleted);
+  localStorage.setItem('hoinar.dirty', '1');
+  _edits++;
+  syncPush();
+};
 const saveSettings = () => store(K_SETTINGS, settings);
+
+const validTrip = (x) => !!(x && x.input && x.plan && Array.isArray(x.plan.days));
+function mergeSync(a, b) {
+  const del = {};
+  const cutoff = Date.now() - 90 * 86400000;
+  for (const src of [a.deleted || {}, b.deleted || {}]) for (const [id, ts] of Object.entries(src)) if (+ts > cutoff && +ts > (del[id] || 0)) del[id] = +ts;
+  const out = {};
+  for (const id of new Set([...Object.keys(a.trips || {}), ...Object.keys(b.trips || {})])) {
+    const x = a.trips?.[id], y = b.trips?.[id];
+    const pick = !validTrip(x) ? y : !validTrip(y) ? x : (y.updatedAt || 0) >= (x.updatedAt || 0) ? y : x;
+    if (!validTrip(pick) || (del[id] && del[id] >= (pick.updatedAt || 0))) continue;
+    out[id] = pick;
+  }
+  return { trips: out, deleted: del };
+}
 
 let _syncTs = +(localStorage.getItem('hoinar.syncTs') || 0);
 let _pushTimer;
+let _syncBusy = false;
+let _edits = 0;
+const syncUrl = (q = '') => settings.api.replace(/\/+$/, '') + '/sync' + q;
+
+function applySynced(data) {
+  const m = mergeSync({ trips, deleted }, data);
+  Object.keys(trips).forEach((k) => delete trips[k]);
+  Object.assign(trips, m.trips);
+  deleted = m.deleted;
+  sigs = {};
+  for (const id of Object.keys(trips)) sigs[id] = tripSig(trips[id]);
+  storeChecked(K_TRIPS, trips);
+  store(K_SIGS, sigs);
+  store(K_DEL, deleted);
+  const h = location.hash;
+  if (h.length < 3 || h === '#/') renderHome();
+  else if (h.startsWith('#/trip/') && !trips[h.slice(7).split('/')[0]]) location.hash = '#/';
+}
 function syncPush() {
   if (!settings.token) return;
   clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(async () => {
-    _syncTs = Date.now();
-    try {
+  _pushTimer = setTimeout(doPush, 3000);
+}
+async function doPush() {
+  if (!settings.token) return;
+  if (_syncBusy) return syncPush();
+  _syncBusy = true;
+  const editsAtStart = _edits;
+  try {
+    const r = await fetch(syncUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': settings.token },
+      body: JSON.stringify({ trips, deleted }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.trips) {
+      _syncTs = data.ts || Date.now();
       localStorage.setItem('hoinar.syncTs', _syncTs);
-      await fetch(settings.api.replace(/\/+$/, '') + '/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-App-Token': settings.token },
-        body: JSON.stringify({ ts: _syncTs, trips }),
-        signal: AbortSignal.timeout(15000),
-      });
-    } catch {}
-  }, 3000);
+      if (_edits === editsAtStart) localStorage.removeItem('hoinar.dirty');
+      applySynced(data);
+    }
+  } catch {} finally { _syncBusy = false; }
 }
 async function syncPull() {
   if (!settings.token) return;
+  const dirty = !!localStorage.getItem('hoinar.dirty') || !_syncTs;
   try {
-    const r = await fetch(settings.api.replace(/\/+$/, '') + '/sync', {
+    const r = await fetch(syncUrl(_syncTs ? '?since=' + _syncTs : ''), {
       headers: { 'X-App-Token': settings.token },
       signal: AbortSignal.timeout(10000),
     });
     if (!r.ok) return;
     const data = await r.json();
-    if (!data.trips || data.ts <= _syncTs) return;
-    _syncTs = data.ts;
+    if (data.notModified) { if (dirty) doPush(); return; }
+    if (!data.trips) return;
+    _syncTs = data.ts || _syncTs;
     localStorage.setItem('hoinar.syncTs', _syncTs);
-    Object.keys(trips).forEach((k) => delete trips[k]);
-    Object.assign(trips, data.trips);
-    store(K_TRIPS, trips);
-    if (location.hash.length < 3) renderHome();
+    applySynced(data);
+    stamp();
+    store(K_SIGS, sigs);
+    store(K_DEL, deleted);
+    if (dirty || Object.keys(trips).some((id) => !data.trips[id] || (trips[id].updatedAt || 0) > (data.trips[id].updatedAt || 0))) doPush();
   } catch {}
 }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncPull(); });
 
 if (location.hash.startsWith('#key=')) {
   settings.token = decodeURIComponent(location.hash.slice(5));
   saveSettings();
+  _syncTs = 0;
   history.replaceState(null, '', location.pathname + '#/');
 }
 
@@ -376,7 +453,7 @@ function tzNow(tz) {
   try {
     return {
       date: d.toLocaleDateString('sv', { timeZone: tz }),
-      min: toMin(d.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false })),
+      min: toMin(d.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })),
     };
   } catch {
     return { date: d.toLocaleDateString('sv'), min: d.getHours() * 60 + d.getMinutes() };
@@ -666,6 +743,7 @@ function route() {
   }
   document.body.classList.remove('hero-page', 'scrolled');
   const h = location.hash.slice(1) || '/';
+  if (h === '/stats') return renderStats();
   if (h.startsWith('share=')) return importShared(h.slice(6));
   if (h.startsWith('/trip/')) {
     const trip = trips[h.slice(6)];
@@ -837,27 +915,34 @@ async function openWeather(trip) {
   const p = trip.plan;
   const head = `<h2 id="sheet-title" class="sheet-top">${esc(t('wxTitle'))}</h2>`;
   const cached = trip._wx;
-  const stale = !cached || (Date.now() - cached.fetched > 3 * 3600_000);
+  const wxKey = `${trip.input.start}|${trip.input.end}`;
+  const stale = !cached || cached.key !== wxKey || cached.unavailable || (Date.now() - cached.fetched > 3 * 3600_000);
 
   if (stale) {
     showSheet(`${head}<p class="pending"><span class="spinner"></span>${t('wxUpdating')}</p>`);
     try {
       const geo = p.geo || p.attractions[0];
       const wx = await api('/weather', { lat: geo.lat, lon: geo.lon, start: trip.input.start, end: trip.input.end }, 15000);
+      wx.key = wxKey;
       trip._wx = wx;
       saveTrips();
     } catch {
-      if (!cached) { showSheet(`${head}<p>${t('errNetwork')}</p>`); return; }
+      if (!cached || cached.key !== wxKey) { showSheet(`${head}<p>${t('errNetwork')}</p>`); return; }
     }
   }
 
   const wx = trip._wx;
   if (!wx) return;
+  if (!wx.days || !wx.days.length) {
+    showSheet(`${head}<p>${esc(wx.unavailable === 'past' ? t('wxPast') : t('wxFar'))}</p>`);
+    return;
+  }
 
   const mins = Math.round((Date.now() - wx.fetched) / 60000);
   const todayStr = today();
 
   let html = `${head}<p class="wx-meta">${t('wxUpdated', { m: mins })}</p>`;
+  if (wx.partial) html += `<p class="wx-meta">${esc(t('wxPartial'))}</p>`;
 
   const tips = [];
   const maxRain = Math.max(...wx.days.map((d) => d.rainProb));
@@ -934,12 +1019,8 @@ function flStatusLabel(status) {
 }
 
 function flTimeShort(iso) {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return '';
-  }
+  const m = String(iso || '').match(/T(\d{2}):(\d{2})/);
+  return m ? `${m[1]}:${m[2]}` : '';
 }
 
 function flightCardHtml(slug, saved) {
@@ -1017,7 +1098,7 @@ function flightForm(trip, slug, parentRender) {
   });
 }
 
-const FL_RE = /^[A-Za-z]{1,2}\d{1,4}[A-Za-z]?$/;
+const FL_RE = /^([A-Za-z]\d|\d[A-Za-z]|[A-Za-z]{2})\d{1,4}[A-Za-z]?$/;
 
 async function refreshFlight(trip, slug, parentRender, reopen) {
   const saved = trip.flights[slug];
@@ -1034,6 +1115,7 @@ async function refreshFlight(trip, slug, parentRender, reopen) {
       e.message === t('errNotFound') ? t('flNotFound') :
       e.message === 'flight_rate_limit' ? t('flRateLimit') :
       e.message === 'flight_not_configured' ? t('flNotConfigured') :
+      e.message === 'flight_service_error' ? t('flServiceError') :
       e.message === t('errNetwork') ? t('errNetwork') : e.message;
     trip.flights[slug] = { number: saved.number, date: saved.date, error: msg };
   }
@@ -1177,6 +1259,8 @@ function renderHome() {
             .join('')}</div>`
         : `<div class="empty">${icon('globe')}<p><strong>${t('emptyTitle')}</strong></p><p>${t('emptyText')}</p></div>`
     }
+    ${list.length ? `<a class="tile stats-tile" href="#/stats"><span class="tile-ic">${icon('globe')}</span><span><strong>${t('statsTitle')}</strong><small>${t('statsHint')}</small></span>${icon('chev', 'go')}</a>` : ''}
+    <div style="height:90px"></div>
     <div class="cta"><a class="btn primary pill" href="#/new">${icon('plus')}${t('newTrip')}</a></div>`;
   app.querySelectorAll('[data-del]').forEach((b) =>
     b.addEventListener('click', (e) => {
@@ -1190,6 +1274,43 @@ function renderHome() {
     })
   );
   list.filter((tr) => !heroImage(tr)).forEach((tr) => pageImages(tr.plan.attractions.slice(0, 6)).then((c) => c && (saveTrips(), location.hash.length < 3 && renderHome())));
+}
+
+function tripWalkKm(trip) {
+  let km = 0;
+  for (const d of trip.plan.days) for (const it of d.items) if (it.type === 'visit' && it.travelMode === 'walk') km += (it.travelMin * 4.5) / 60;
+  return km;
+}
+
+function renderStats() {
+  const list = Object.values(trips).sort((a, b) => b.input.start.localeCompare(a.input.start));
+  const nf = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 });
+  const now = today();
+  const cities = new Set(list.map((tr) => tr.plan.city));
+  const countries = new Set(list.map((tr) => tr.plan.country).filter(Boolean));
+  const days = list.reduce((n, tr) => n + tr.plan.days.length, 0);
+  const places = list.reduce((n, tr) => n + tr.plan.days.reduce((m, d) => m + d.items.filter((i) => i.type === 'visit').length, 0), 0);
+  const km = list.reduce((n, tr) => n + tripWalkKm(tr), 0);
+  const upcoming = list.filter((tr) => tr.input.end >= now).length;
+  const past = list.length - upcoming;
+  const longest = list.reduce((b, tr) => (!b || tr.plan.days.length > b.plan.days.length ? tr : b), null);
+  const card = (label, value) => `<div class="stat-card"><small>${label}</small><strong>${value}</strong></div>`;
+  app.innerHTML = `
+    ${pageHead(t('statsTitle'))}
+    ${
+      list.length
+        ? `<div class="stat-grid">
+      ${card(t('stTrips'), list.length)}${card(t('stCities'), cities.size)}${card(t('stCountries'), countries.size)}
+      ${card(t('stDays'), days)}${card(t('stPlaces'), places)}${card(t('stWalk'), `${nf.format(km)} km`)}
+      ${card(t('stUpcoming'), upcoming)}${card(t('stPast'), past)}${card(t('stLongest'), longest ? `${longest.plan.days.length} ${settings.lang === 'ro' ? 'zile' : 'days'}` : '-')}
+    </div>
+    <h3 class="rhead">${t('stList')}</h3>
+    <ul class="st-list">${list
+      .map((tr) => `<li><a href="#/trip/${tr.id}"><strong>${esc(tr.plan.city)}</strong><small>${esc(tr.plan.country || '')} \u2022 ${fmtRange(tr.input.start, tr.input.end)}</small></a></li>`)
+      .join('')}</ul>`
+        : `<div class="empty">${icon('globe')}<p><strong>${t('stEmpty')}</strong></p></div>`
+    }
+    <div style="height:40px"></div>`;
 }
 
 function pageHead(title) {
@@ -1662,16 +1783,19 @@ function renderSettings() {
   const f = document.getElementById('s');
   f.addEventListener('submit', (e) => {
     e.preventDefault();
+    const _prevTok = settings.token, _prevApi = settings.api;
     settings.token = f.token.value.trim();
     settings.lang = document.getElementById('lang').value;
     settings.theme = document.getElementById('theme').value;
     applyTheme();
     settings.api = f.api.value.trim() || DEFAULT_API;
     settings.peron = document.getElementById('peron').value.trim();
+    const syncChanged = settings.token !== _prevTok || settings.api !== _prevApi;
     saveSettings();
     document.documentElement.lang = settings.lang;
     renderSettings();
     document.getElementById('msg').textContent = t('saved');
+    if (syncChanged) { _syncTs = 0; localStorage.setItem('hoinar.syncTs', 0); syncPull(); }
   });
 }
 

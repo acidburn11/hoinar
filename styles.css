@@ -461,3 +461,12 @@ input[type=date] { padding: 10px; font-size: 16px; }
 :root[data-theme="dark"] .fl-err { color: #ff8a80; }
 .fl-actions { display: flex; gap: 8px; }
 .fl-actions .btn { flex: 1; }
+
+.stats-tile { margin: 18px 0 0; }
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 4px 0 22px; }
+.stat-card { display: flex; flex-direction: column; gap: 4px; padding: 14px 12px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+.stat-card small { color: var(--muted); font-size: 12px; }
+.stat-card strong { font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+.st-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.st-list a { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--surface); color: var(--ink); text-decoration: none; box-shadow: var(--shadow); }
+.st-list small { color: var(--muted); }
